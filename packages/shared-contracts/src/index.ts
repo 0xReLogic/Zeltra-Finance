@@ -118,4 +118,13 @@ export interface PropertyTitleTransferResult {
   total_title_transfer_cost: string;
 }
 
+export interface BphtbCalculationResult {
+  property_value: string;
+  npoptkp: string;
+  taxable_value: string;
+  tax_rate_percent: string;
+  bphtb_due: string;
+}
+
+
 

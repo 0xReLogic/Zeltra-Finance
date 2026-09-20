@@ -24,3 +24,12 @@ pub struct PropertyTitleTransferResult {
     pub total_title_transfer_cost: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct BphtbCalculationResult {
+    pub property_value: String,
+    pub npoptkp: String,
+    pub taxable_value: String,
+    pub tax_rate_percent: String,
+    pub bphtb_due: String,
+}
+

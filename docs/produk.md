@@ -8,8 +8,8 @@ Dokumen ini memuat daftar 150 kalkulator finansial yang dikelompokkan ke dalam 1
 
 ## Status Progres Eksekusi
 - **Total Kalkulator**: 150
-- **Telah Selesai**: 10 / 150 (6.67%)
-- **Dalam Pengerjaan**: 1 (Kalkulator Pajak Pembeli BPHTB)
+- **Telah Selesai**: 11 / 150 (7.33%)
+- **Berikutnya**: Calculator 12 (Kalkulator Pajak Penjual PPh Pengalihan Hak Properti PP 34/2016)
 
 ---
 
@@ -26,10 +26,10 @@ Dokumen ini memuat daftar 150 kalkulator finansial yang dikelompokkan ke dalam 1
 - [x] 8. **Kalkulator KPR Syariah (Murabahah)**: Menggunakan prinsip margin keuntungan tetap jual beli, bebas bunga mengambang. *(Selesai: [/properti/kpr-syariah-murabahah/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/kpr-syariah-murabahah.ts))*
 - [x] 9. **Kalkulator KPR Syariah (MMQ)**: Simulasi skema kepemilikan bertahap Musyarakah Mutanaqisah. *(Selesai: [/properti/kpr-syariah-mmq/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/kpr-syariah-mmq.ts))*
 - [x] 10. **Kalkulator Biaya Balik Nama (BBN)**: Estimasi biaya legalitas sertifikat tanah/rumah BPN & PPAT. *(Selesai: [/properti/biaya-balik-nama-sertifikat/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/biaya-balik-nama-sertifikat.ts))*
-
-- [ ] 11. **Kalkulator Pajak Pembeli (BPHTB)**: Hitung otomatis tarif 5% setelah dikurangi NPOPTKP daerah.
+- [x] 11. **Kalkulator Pajak Pembeli (BPHTB)**: Hitung otomatis tarif 5% setelah dikurangi NPOPTKP daerah. *(Selesai: [/properti/pajak-bphtb/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/pajak-bphtb.ts))*
 
 - [ ] 12. **Kalkulator Pajak Penjual (PPh Properti)**: Hitung potongan 2.5% dari nilai pengalihan hak tanah/bangunan.
+
 - [ ] 13. **Kalkulator Biaya Notaris KPR**: Estimasi biaya APHT, AJB, dan SKMHT.
 - [ ] 14. **Kalkulator Kemampuan Beli Rumah**: Input gaji bulanan, sistem memberi tahu harga maksimal rumah yang bisa dicicil.
 - [ ] 15. **Kalkulator Sewa vs Beli Rumah**: Analisis finansial jangka panjang apakah lebih untung sewa atau langsung ambil KPR.

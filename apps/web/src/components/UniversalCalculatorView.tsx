@@ -7,6 +7,7 @@ import {
   LoanCalculationResult,
   GeneralLoanCalculationResult,
   PropertyTitleTransferResult,
+  BphtbCalculationResult,
 } from '@zeltra/shared-contracts';
 
 interface Props {
@@ -17,6 +18,7 @@ interface WasmEngineApi {
   calculate_kpr_annuity: (p: string, r: string, t: number) => string;
   calculate_kpr_general: (p: string, dp: string, r: string, t: number, m: string) => string;
   calculate_property_title_transfer?: (v: string) => string;
+  calculate_bphtb?: (p: string, n: string, r: string) => string;
   get_engine_version: () => string;
 }
 
@@ -25,11 +27,17 @@ export function UniversalCalculatorView({ schema }: Props) {
 
   const isGeneralKpr = schema.engineFunction === 'calculate_kpr_general';
   const isTitleTransfer = schema.engineFunction === 'calculate_property_title_transfer';
+  const isBphtb = schema.engineFunction === 'calculate_bphtb';
+  const isStatutory = isTitleTransfer || isBphtb;
 
-  // State for General KPR / Title Transfer (Property Value)
+  // State for General KPR / Title Transfer / BPHTB (Property Value / NPOP)
   const [propertyPrice, setPropertyPrice] = useState<number>(750000000);
   const [dpPercent, setDpPercent] = useState<number>(20);
   const [calculationType, setCalculationType] = useState<string>('annuity');
+
+  // State for BPHTB
+  const [npoptkpAmount, setNpoptkpAmount] = useState<number>(80000000);
+  const [bphtbRate, setBphtbRate] = useState<number>(5.0);
 
   // State for Direct Loan
   const [principalDirect, setPrincipalDirect] = useState<number>(500000000);
@@ -42,6 +50,7 @@ export function UniversalCalculatorView({ schema }: Props) {
   const [annuityResult, setAnnuityResult] = useState<LoanCalculationResult | null>(null);
   const [generalResult, setGeneralResult] = useState<GeneralLoanCalculationResult | null>(null);
   const [titleTransferResult, setTitleTransferResult] = useState<PropertyTitleTransferResult | null>(null);
+  const [bphtbResult, setBphtbResult] = useState<BphtbCalculationResult | null>(null);
 
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [showSchedule, setShowSchedule] = useState<boolean>(false);
@@ -57,6 +66,7 @@ export function UniversalCalculatorView({ schema }: Props) {
           calculate_kpr_annuity: (p: string, r: string, t: number) => string;
           calculate_kpr_general: (p: string, dp: string, r: string, t: number, m: string) => string;
           calculate_property_title_transfer?: (v: string) => string;
+          calculate_bphtb?: (p: string, n: string, r: string) => string;
           get_engine_version: () => string;
         };
         await wasmModule.default();
@@ -65,6 +75,7 @@ export function UniversalCalculatorView({ schema }: Props) {
             calculate_kpr_annuity: wasmModule.calculate_kpr_annuity,
             calculate_kpr_general: wasmModule.calculate_kpr_general,
             calculate_property_title_transfer: wasmModule.calculate_property_title_transfer,
+            calculate_bphtb: wasmModule.calculate_bphtb,
             get_engine_version: wasmModule.get_engine_version,
           });
         }
@@ -83,7 +94,17 @@ export function UniversalCalculatorView({ schema }: Props) {
     if (!wasmEngine) return;
 
     try {
-      if (isTitleTransfer) {
+      if (isBphtb) {
+        if (wasmEngine.calculate_bphtb) {
+          const rawJson = wasmEngine.calculate_bphtb(
+            propertyPrice.toString(),
+            npoptkpAmount.toString(),
+            bphtbRate.toFixed(2)
+          );
+          const parsed: BphtbCalculationResult = JSON.parse(rawJson);
+          setBphtbResult(parsed);
+        }
+      } else if (isTitleTransfer) {
         if (wasmEngine.calculate_property_title_transfer) {
           const rawJson = wasmEngine.calculate_property_title_transfer(propertyPrice.toString());
           const parsed: PropertyTitleTransferResult = JSON.parse(rawJson);
@@ -116,15 +137,19 @@ export function UniversalCalculatorView({ schema }: Props) {
     }
   }, [
     wasmEngine,
+    isBphtb,
     isTitleTransfer,
     isGeneralKpr,
     propertyPrice,
+    npoptkpAmount,
+    bphtbRate,
     dpPercent,
     calculationType,
     principalDirect,
     annualRate,
     tenorYears,
   ]);
+
 
 
   const activeSchedule: AmortizationRow[] = isGeneralKpr
@@ -260,13 +285,126 @@ export function UniversalCalculatorView({ schema }: Props) {
         <div className="zeltra-card" style={{ padding: '28px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 700 }}>
-              {isTitleTransfer ? 'Nilai Transaksi Properti' : 'Parameter Pinjaman'}
+              {isBphtb
+                ? 'Parameter Pajak BPHTB'
+                : isTitleTransfer
+                ? 'Nilai Transaksi Properti'
+                : 'Parameter Pinjaman'}
             </h2>
             <span className="zeltra-badge zeltra-badge-mint">Wasm Powered</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-            {isTitleTransfer ? (
+            {isBphtb ? (
+              /* BPHTB Inputs */
+              <>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Nilai Transaksi / NJOP (NPOP)
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--emerald-mint)' }}>
+                      {formatRupiah(propertyPrice)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={50000000}
+                    max={5000000000}
+                    step={25000000}
+                    value={propertyPrice}
+                    onChange={(e) => setPropertyPrice(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[350000000, 600000000, 800000000, 1200000000, 2000000000].map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        className={`zeltra-chip ${propertyPrice === p ? 'active' : ''}`}
+                        onClick={() => setPropertyPrice(p)}
+                      >
+                        {formatShortRupiah(p)}
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                    Gunakan nilai tertinggi antara harga transaksi riil pada AJB atau NJOP PBB-P2.
+                  </p>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
+                    Jenis Perolehan Hak & Batas NPOPTKP
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {[
+                      { id: 80000000, label: 'Jual Beli / Hibah', desc: 'Bebas Pajak Rp 80 Jt' },
+                      { id: 300000000, label: 'Waris / Wasiat', desc: 'Bebas Pajak Rp 300 Jt' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        className={`zeltra-button-secondary ${npoptkpAmount === opt.id ? 'active' : ''}`}
+                        style={{
+                          padding: '10px 12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          borderColor: npoptkpAmount === opt.id ? 'var(--emerald-mint)' : undefined,
+                        }}
+                        onClick={() => setNpoptkpAmount(opt.id)}
+                      >
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: npoptkpAmount === opt.id ? 'var(--emerald-mint)' : 'var(--text-primary)' }}>
+                          {opt.label}
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {opt.desc}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                    Pasal 44 UU HKPD No. 1/2022: Ambang batas minimal nasional tidak kena pajak.
+                  </p>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Tarif BPHTB Daerah
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--cyan-electric)' }}>
+                      {bphtbRate.toFixed(1)} %
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={1.0}
+                    max={5.0}
+                    step={0.5}
+                    value={bphtbRate}
+                    onChange={(e) => setBphtbRate(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[5.0, 3.0, 2.5].map((rate) => (
+                      <button
+                        key={rate}
+                        type="button"
+                        className={`zeltra-chip ${bphtbRate === rate ? 'active' : ''}`}
+                        onClick={() => setBphtbRate(rate)}
+                      >
+                        {rate.toFixed(1)}% {rate === 5.0 ? '(Maksimal UU)' : ''}
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                    Pasal 45 UU HKPD No. 1/2022: Tarif ditetapkan paling tinggi 5% oleh Perda masing-masing daerah.
+                  </p>
+                </div>
+              </>
+            ) : isTitleTransfer ? (
               /* Title Transfer: Nilai Properti / Transaksi */
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -434,7 +572,7 @@ export function UniversalCalculatorView({ schema }: Props) {
               </div>
             )}
 
-            {!isTitleTransfer && (
+            {!isStatutory && (
               <>
                 {/* Suku Bunga Pinjaman */}
                 <div>
@@ -511,14 +649,16 @@ export function UniversalCalculatorView({ schema }: Props) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <span style={{ fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-                {isTitleTransfer
+                {isBphtb
+                  ? 'Estimasi Pajak Pembeli BPHTB Terutang'
+                  : isTitleTransfer
                   ? 'Estimasi Total Biaya Balik Nama (BBN)'
                   : isGeneralKpr && calculationType === 'effective'
                   ? 'Angsuran Bulan Pertama'
                   : 'Estimasi Angsuran Bulanan'}
               </span>
               <span className="zeltra-badge zeltra-badge-mint">
-                {isTitleTransfer ? 'PP 128/2015 BPN' : 'Fixed-Point Math'}
+                {isBphtb ? 'UU HKPD 1/2022' : isTitleTransfer ? 'PP 128/2015 BPN' : 'Fixed-Point Math'}
               </span>
             </div>
 
@@ -533,7 +673,11 @@ export function UniversalCalculatorView({ schema }: Props) {
                   letterSpacing: '-0.02em',
                 }}
               >
-                {isTitleTransfer
+                {isBphtb
+                  ? bphtbResult
+                    ? formatRupiah(bphtbResult.bphtb_due)
+                    : 'Memuat Engine...'
+                  : isTitleTransfer
                   ? titleTransferResult
                     ? formatRupiah(titleTransferResult.total_title_transfer_cost)
                     : 'Memuat Engine...'
@@ -546,7 +690,9 @@ export function UniversalCalculatorView({ schema }: Props) {
                   : 'Memuat Engine...'}
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                {isTitleTransfer
+                {isBphtb
+                  ? 'Pajak daerah resmi yang wajib disetor ke kas daerah sebelum penandatanganan Akta Jual Beli (AJB).'
+                  : isTitleTransfer
                   ? 'Estimasi resmi PNBP kantor BPN dan honorarium PPAT sesuai regulasi Menteri ATR/BPN.'
                   : isGeneralKpr && calculationType === 'effective'
                   ? `Angsuran menurun hingga ${generalResult ? formatRupiah(generalResult.last_month_installment) : '-'} pada bulan terakhir.`
@@ -564,7 +710,42 @@ export function UniversalCalculatorView({ schema }: Props) {
                 borderTop: '1px solid var(--border-subtle)',
               }}
             >
-              {isTitleTransfer && titleTransferResult ? (
+              {isBphtb && bphtbResult ? (
+                <>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Nilai Transaksi (NPOP)
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {formatRupiah(bphtbResult.property_value)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Batas Bebas Pajak (NPOPTKP)
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--cyan-electric)' }}>
+                      {formatRupiah(bphtbResult.npoptkp)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      NPOP Kena Pajak
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {formatRupiah(bphtbResult.taxable_value)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Tarif BPHTB Terpilih
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--emerald-mint)' }}>
+                      {bphtbResult.tax_rate_percent}
+                    </span>
+                  </div>
+                </>
+              ) : isTitleTransfer && titleTransferResult ? (
                 <>
                   <div>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
@@ -657,7 +838,7 @@ export function UniversalCalculatorView({ schema }: Props) {
             >
               {copiedLink ? 'Link Tersalin' : 'Bagikan Simulasi'}
             </button>
-            {!isTitleTransfer && (
+            {!isStatutory && (
               <button
                 type="button"
                 className="zeltra-button-secondary"
@@ -670,6 +851,29 @@ export function UniversalCalculatorView({ schema }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Visualizer Card: 60 FPS Native Canvas Amortization Chart (Kredit/Pinjaman) */}
+      {!isStatutory && (
+        <div className="zeltra-card" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div>
+              <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Kurva Pelunasan Pokok Pinjaman (Amortisasi)</h3>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                Penurunan sisa saldo utang pokok selama {tenorYears} tahun masa tenor kredit.
+              </p>
+            </div>
+            <span className="zeltra-badge zeltra-badge-mint">Direct 60 FPS Canvas</span>
+          </div>
+
+          <div style={{ width: '100%', height: '240px', position: 'relative' }}>
+            <canvas
+              ref={canvasRef}
+              style={{ width: '100%', height: '100%', display: 'block' }}
+            />
+          </div>
+        </div>
+      )}
+
 
 
       {/* Expandable Amortization Schedule Table */}

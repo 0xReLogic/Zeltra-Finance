@@ -1,6 +1,45 @@
-use super::types::PropertyTitleTransferResult;
+use super::types::{BphtbCalculationResult, PropertyTitleTransferResult};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
+
+/// Menghitung Pajak Pembeli Properti (BPHTB - Bea Perolehan Hak atas Tanah dan Bangunan)
+/// Berdasarkan UU HKPD No. 1 Tahun 2022 Pasal 44 & 45.
+pub fn calculate_bphtb_internal(
+    property_value: Decimal,
+    npoptkp: Decimal,
+    tax_rate_percent: Decimal,
+) -> Result<BphtbCalculationResult, String> {
+    if property_value < dec!(0) {
+        return Err("Nilai perolehan objek pajak (NPOP) tidak boleh negatif".to_string());
+    }
+    if npoptkp < dec!(0) {
+        return Err("NPOPTKP tidak boleh negatif".to_string());
+    }
+    if tax_rate_percent < dec!(0) || tax_rate_percent > dec!(100) {
+        return Err("Tarif BPHTB harus antara 0% dan 100%".to_string());
+    }
+
+    // NPOP Kena Pajak = max(0, NPOP - NPOPTKP)
+    let taxable_value = if property_value > npoptkp {
+        property_value - npoptkp
+    } else {
+        dec!(0)
+    };
+
+    let rate_fraction = tax_rate_percent / dec!(100);
+    let bphtb_due = (taxable_value * rate_fraction).round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+
+    Ok(BphtbCalculationResult {
+        property_value: property_value.to_string(),
+        npoptkp: npoptkp.to_string(),
+        taxable_value: taxable_value.to_string(),
+        tax_rate_percent: format!("{:.2}%", tax_rate_percent),
+        bphtb_due: bphtb_due.to_string(),
+    })
+}
 
 /// Menghitung Biaya Balik Nama (BBN) Sertifikat Tanah/Rumah
 /// Berdasarkan PP No. 128 Tahun 2015 dan Permen ATR/BPN No. 33 Tahun 2021.
@@ -55,6 +94,45 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_golden_case_bphtb_regular_600m() {
+        let property_value = dec!(600000000);
+        let npoptkp = dec!(80000000);
+        let rate = dec!(5.0);
+
+        let res = calculate_bphtb_internal(property_value, npoptkp, rate).unwrap();
+        assert_eq!(res.property_value, "600000000");
+        assert_eq!(res.npoptkp, "80000000");
+        assert_eq!(res.taxable_value, "520000000");
+        assert_eq!(res.tax_rate_percent, "5.00%");
+        assert_eq!(res.bphtb_due, "26000000");
+    }
+
+    #[test]
+    fn test_golden_case_bphtb_inheritance_800m() {
+        let property_value = dec!(800000000);
+        let npoptkp = dec!(300000000);
+        let rate = dec!(5.0);
+
+        let res = calculate_bphtb_internal(property_value, npoptkp, rate).unwrap();
+        assert_eq!(res.property_value, "800000000");
+        assert_eq!(res.npoptkp, "300000000");
+        assert_eq!(res.taxable_value, "500000000");
+        assert_eq!(res.tax_rate_percent, "5.00%");
+        assert_eq!(res.bphtb_due, "25000000");
+    }
+
+    #[test]
+    fn test_golden_case_bphtb_below_threshold() {
+        let property_value = dec!(75000000);
+        let npoptkp = dec!(80000000);
+        let rate = dec!(5.0);
+
+        let res = calculate_bphtb_internal(property_value, npoptkp, rate).unwrap();
+        assert_eq!(res.taxable_value, "0");
+        assert_eq!(res.bphtb_due, "0");
+    }
+
+    #[test]
     fn test_golden_case_title_transfer_750m() {
         let value = dec!(750000000);
         let res = calculate_property_title_transfer_internal(value).unwrap();
@@ -80,3 +158,4 @@ mod tests {
         assert_eq!(res.total_title_transfer_cost, "4950000");
     }
 }
+
