@@ -1,9 +1,97 @@
 use super::types::{
-    BphtbCalculationResult, KprNotaryFeeResult, PropertySellerTaxResult,
+    BphtbCalculationResult, HomeAffordabilityResult, KprNotaryFeeResult, PropertySellerTaxResult,
     PropertyTitleTransferResult,
 };
 use rust_decimal::Decimal;
+use rust_decimal::MathematicalOps;
 use rust_decimal_macros::dec;
+
+/// Menghitung Kemampuan Beli Rumah / Plafon KPR Maksimal (Affordability Analysis)
+/// Berdasarkan batasan Debt Service Ratio (DSR 30% - 40%) standar Bank Indonesia & OJK.
+pub fn calculate_home_affordability_internal(
+    monthly_income: Decimal,
+    other_debts: Decimal,
+    dsr_percent: Decimal,
+    annual_rate_percent: Decimal,
+    tenor_months: u32,
+    down_payment_percent: Decimal,
+) -> Result<HomeAffordabilityResult, String> {
+    if monthly_income <= dec!(0) {
+        return Err("Penghasilan bulanan harus lebih besar dari 0".to_string());
+    }
+    if other_debts < dec!(0) {
+        return Err("Cicilan utang lain tidak boleh negatif".to_string());
+    }
+    if dsr_percent <= dec!(0) || dsr_percent > dec!(100) {
+        return Err("DSR harus antara 1% dan 100%".to_string());
+    }
+    if annual_rate_percent < dec!(0) || annual_rate_percent > dec!(100) {
+        return Err("Suku bunga harus antara 0% dan 100%".to_string());
+    }
+    if tenor_months == 0 {
+        return Err("Tenor pinjaman minimal 1 bulan".to_string());
+    }
+    if down_payment_percent < dec!(0) || down_payment_percent >= dec!(100) {
+        return Err("Uang muka harus antara 0% dan di bawah 100%".to_string());
+    }
+
+    // 1. Cicilan KPR Maksimal yang Diizinkan berdasarkan DSR
+    let allowed_total_debt = (monthly_income * (dsr_percent / dec!(100))).round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+    let max_installment = if allowed_total_debt > other_debts {
+        allowed_total_debt - other_debts
+    } else {
+        dec!(0)
+    };
+
+    // 2. Inversi Rumus Anuitas: P = A * [(1+i)^n - 1] / [i * (1+i)^n]
+    let max_loan_principal = if max_installment == dec!(0) {
+        dec!(0)
+    } else {
+        let monthly_rate = (annual_rate_percent / dec!(100)) / dec!(12);
+        if monthly_rate == dec!(0) {
+            max_installment * Decimal::from(tenor_months)
+        } else {
+            let one = dec!(1);
+            let one_plus_i = one + monthly_rate;
+            let n_dec = Decimal::from(tenor_months);
+            let factor = one_plus_i.powd(n_dec);
+            let numerator = factor - one;
+            let denominator = monthly_rate * factor;
+            (max_installment * (numerator / denominator)).round_dp_with_strategy(
+                0,
+                rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+            )
+        }
+    };
+
+    // 3. Harga Properti Maksimal: H = P / (1 - DP%)
+    let dp_fraction = down_payment_percent / dec!(100);
+    let max_property_price = if dp_fraction < dec!(1) {
+        (max_loan_principal / (dec!(1) - dp_fraction)).round_dp_with_strategy(
+            0,
+            rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+        )
+    } else {
+        max_loan_principal
+    };
+    let required_down_payment = max_property_price - max_loan_principal;
+
+    Ok(HomeAffordabilityResult {
+        monthly_income: monthly_income.to_string(),
+        other_debts: other_debts.to_string(),
+        dsr_percent: format!("{:.1}%", dsr_percent),
+        max_monthly_installment: max_installment.to_string(),
+        max_loan_principal: max_loan_principal.to_string(),
+        down_payment_percent: format!("{:.1}%", down_payment_percent),
+        required_down_payment: required_down_payment.to_string(),
+        max_property_price: max_property_price.to_string(),
+        annual_rate_percent: format!("{:.2}%", annual_rate_percent),
+        tenor_months,
+    })
+}
 
 /// Menghitung Rincian Biaya Notaris & PPAT Akad Kredit KPR
 /// Berdasarkan Permen ATR/BPN No. 33/2021 (AJB), UUHT No. 4/1996 (APHT), dan PP No. 128/2015 (PNBP Hak Tanggungan).
@@ -359,5 +447,56 @@ mod tests {
         assert_eq!(res.ppat_rate_percent, "1.00%");
         assert_eq!(res.total_title_transfer_cost, "4950000");
     }
+
+    #[test]
+    fn test_golden_case_home_affordability_single_15m() {
+        let monthly_income = dec!(15000000);
+        let other_debts = dec!(0);
+        let dsr_percent = dec!(30);
+        let annual_rate_percent = dec!(7.0);
+        let tenor_months = 180;
+        let down_payment_percent = dec!(20);
+
+        let res = calculate_home_affordability_internal(
+            monthly_income,
+            other_debts,
+            dsr_percent,
+            annual_rate_percent,
+            tenor_months,
+            down_payment_percent,
+        )
+        .unwrap();
+
+        assert_eq!(res.max_monthly_installment, "4500000");
+        assert_eq!(res.max_loan_principal, "500651809");
+        assert_eq!(res.max_property_price, "625814761");
+        assert_eq!(res.required_down_payment, "125162952");
+    }
+
+    #[test]
+    fn test_golden_case_home_affordability_joint_25m() {
+        let monthly_income = dec!(25000000);
+        let other_debts = dec!(2500000);
+        let dsr_percent = dec!(35);
+        let annual_rate_percent = dec!(6.5);
+        let tenor_months = 240;
+        let down_payment_percent = dec!(15);
+
+        let res = calculate_home_affordability_internal(
+            monthly_income,
+            other_debts,
+            dsr_percent,
+            annual_rate_percent,
+            tenor_months,
+            down_payment_percent,
+        )
+        .unwrap();
+
+        assert_eq!(res.max_monthly_installment, "6250000");
+        assert_eq!(res.max_loan_principal, "838281277");
+        assert_eq!(res.max_property_price, "986213267");
+        assert_eq!(res.required_down_payment, "147931990");
+    }
 }
+
 

@@ -11,6 +11,7 @@ import { biayaBalikNamaSertifikatSchema } from './biaya-balik-nama-sertifikat';
 import { pajakBphtbSchema } from './pajak-bphtb';
 import { pajakPenjualPphSchema } from './pajak-penjual-pph';
 import { biayaNotarisKprSchema } from './biaya-notaris-kpr';
+import { kemampuanBeliRumahSchema } from './kemampuan-beli-rumah';
 
 export { type ExtendedCalculatorSchema };
 
@@ -28,6 +29,7 @@ export const allCalculatorSchemas: ExtendedCalculatorSchema[] = [
   pajakBphtbSchema,
   pajakPenjualPphSchema,
   biayaNotarisKprSchema,
+  kemampuanBeliRumahSchema,
 ];
 
 

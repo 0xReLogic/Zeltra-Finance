@@ -56,5 +56,20 @@ pub struct KprNotaryFeeResult {
     pub total_notary_fee: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct HomeAffordabilityResult {
+    pub monthly_income: String,
+    pub other_debts: String,
+    pub dsr_percent: String,
+    pub max_monthly_installment: String,
+    pub max_loan_principal: String,
+    pub down_payment_percent: String,
+    pub required_down_payment: String,
+    pub max_property_price: String,
+    pub annual_rate_percent: String,
+    pub tenor_months: u32,
+}
+
+
 
 

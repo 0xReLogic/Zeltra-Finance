@@ -147,6 +147,19 @@ export interface KprNotaryFeeResult {
   total_notary_fee: string;
 }
 
+export interface HomeAffordabilityResult {
+  monthly_income: string;
+  other_debts: string;
+  dsr_percent: string;
+  max_monthly_installment: string;
+  max_loan_principal: string;
+  down_payment_percent: string;
+  required_down_payment: string;
+  max_property_price: string;
+  annual_rate_percent: string;
+  tenor_months: number;
+}
+
 
 
 

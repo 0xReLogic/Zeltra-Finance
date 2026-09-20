@@ -10,6 +10,7 @@ import {
   BphtbCalculationResult,
   PropertySellerTaxResult,
   KprNotaryFeeResult,
+  HomeAffordabilityResult,
 } from '@zeltra/shared-contracts';
 
 interface Props {
@@ -23,6 +24,14 @@ interface WasmEngineApi {
   calculate_bphtb?: (p: string, n: string, r: string) => string;
   calculate_property_seller_tax?: (g: string, r: string) => string;
   calculate_kpr_notary_fee?: (p: string, l: string) => string;
+  calculate_home_affordability?: (
+    income: string,
+    debts: string,
+    dsr: string,
+    rate: string,
+    tenor: number,
+    dp: string
+  ) => string;
   get_engine_version: () => string;
 }
 
@@ -34,7 +43,13 @@ export function UniversalCalculatorView({ schema }: Props) {
   const isBphtb = schema.engineFunction === 'calculate_bphtb';
   const isSellerTax = schema.engineFunction === 'calculate_property_seller_tax';
   const isNotaryFee = schema.engineFunction === 'calculate_kpr_notary_fee';
-  const isStatutory = isTitleTransfer || isBphtb || isSellerTax || isNotaryFee;
+  const isHomeAffordability = schema.engineFunction === 'calculate_home_affordability';
+  const isStatutory = isTitleTransfer || isBphtb || isSellerTax || isNotaryFee || isHomeAffordability;
+
+  // State for Home Affordability
+  const [monthlyIncome, setMonthlyIncome] = useState<number>(15000000);
+  const [otherDebts, setOtherDebts] = useState<number>(0);
+  const [dsrPercent, setDsrPercent] = useState<number>(30);
 
   // State for General KPR / Title Transfer / BPHTB / Seller Tax / Notary (Property Value / NPOP)
   const [propertyPrice, setPropertyPrice] = useState<number>(750000000);
@@ -62,6 +77,7 @@ export function UniversalCalculatorView({ schema }: Props) {
   const [bphtbResult, setBphtbResult] = useState<BphtbCalculationResult | null>(null);
   const [sellerTaxResult, setSellerTaxResult] = useState<PropertySellerTaxResult | null>(null);
   const [notaryResult, setNotaryResult] = useState<KprNotaryFeeResult | null>(null);
+  const [affordabilityResult, setAffordabilityResult] = useState<HomeAffordabilityResult | null>(null);
 
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [showSchedule, setShowSchedule] = useState<boolean>(false);
@@ -80,6 +96,14 @@ export function UniversalCalculatorView({ schema }: Props) {
           calculate_bphtb?: (p: string, n: string, r: string) => string;
           calculate_property_seller_tax?: (g: string, r: string) => string;
           calculate_kpr_notary_fee?: (p: string, l: string) => string;
+          calculate_home_affordability?: (
+            income: string,
+            debts: string,
+            dsr: string,
+            rate: string,
+            tenor: number,
+            dp: string
+          ) => string;
           get_engine_version: () => string;
         };
         await wasmModule.default();
@@ -91,6 +115,7 @@ export function UniversalCalculatorView({ schema }: Props) {
             calculate_bphtb: wasmModule.calculate_bphtb,
             calculate_property_seller_tax: wasmModule.calculate_property_seller_tax,
             calculate_kpr_notary_fee: wasmModule.calculate_kpr_notary_fee,
+            calculate_home_affordability: wasmModule.calculate_home_affordability,
             get_engine_version: wasmModule.get_engine_version,
           });
         }
@@ -109,7 +134,21 @@ export function UniversalCalculatorView({ schema }: Props) {
     if (!wasmEngine) return;
 
     try {
-      if (isNotaryFee) {
+      if (isHomeAffordability) {
+        if (wasmEngine.calculate_home_affordability) {
+          const tenorMonths = tenorYears * 12;
+          const rawJson = wasmEngine.calculate_home_affordability(
+            monthlyIncome.toString(),
+            otherDebts.toString(),
+            dsrPercent.toFixed(1),
+            annualRate.toFixed(2),
+            tenorMonths,
+            dpPercent.toFixed(1)
+          );
+          const parsed: HomeAffordabilityResult = JSON.parse(rawJson);
+          setAffordabilityResult(parsed);
+        }
+      } else if (isNotaryFee) {
         if (wasmEngine.calculate_kpr_notary_fee) {
           const principal = Math.min(
             propertyPrice,
@@ -174,11 +213,15 @@ export function UniversalCalculatorView({ schema }: Props) {
     }
   }, [
     wasmEngine,
+    isHomeAffordability,
     isNotaryFee,
     isSellerTax,
     isBphtb,
     isTitleTransfer,
     isGeneralKpr,
+    monthlyIncome,
+    otherDebts,
+    dsrPercent,
     propertyPrice,
     sellerTaxRate,
     npoptkpAmount,
@@ -327,7 +370,9 @@ export function UniversalCalculatorView({ schema }: Props) {
         <div className="zeltra-card" style={{ padding: '28px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 700 }}>
-              {isNotaryFee
+              {isHomeAffordability
+                ? 'Kapasitas Finansial & Gaji'
+                : isNotaryFee
                 ? 'Parameter Akad KPR'
                 : isSellerTax
                 ? 'Parameter Pajak Penjual (PPh Properti)'
@@ -341,7 +386,214 @@ export function UniversalCalculatorView({ schema }: Props) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-            {isNotaryFee ? (
+            {isHomeAffordability ? (
+              /* Home Affordability Inputs */
+              <>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Penghasilan Bersih Bulanan (Take-Home Pay)
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--emerald-mint)' }}>
+                      {formatRupiah(monthlyIncome)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={3000000}
+                    max={100000000}
+                    step={500000}
+                    value={monthlyIncome}
+                    onChange={(e) => setMonthlyIncome(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[7000000, 10000000, 15000000, 25000000, 50000000].map((inc) => (
+                      <button
+                        key={inc}
+                        type="button"
+                        className={`zeltra-chip ${monthlyIncome === inc ? 'active' : ''}`}
+                        onClick={() => setMonthlyIncome(inc)}
+                      >
+                        {formatShortRupiah(inc)}
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                    Total penghasilan bersih suami-istri jika berencana mengajukan fasilitas pinjaman gabungan (Joint Income).
+                  </p>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Total Cicilan Utang Berjalan Lainnya
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: otherDebts > 0 ? 'var(--crimson-coral)' : 'var(--text-primary)' }}>
+                      {formatRupiah(otherDebts)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={0}
+                    max={25000000}
+                    step={250000}
+                    value={otherDebts}
+                    onChange={(e) => setOtherDebts(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[0, 1000000, 2500000, 5000000].map((debt) => (
+                      <button
+                        key={debt}
+                        type="button"
+                        className={`zeltra-chip ${otherDebts === debt ? 'active' : ''}`}
+                        onClick={() => setOtherDebts(debt)}
+                      >
+                        {debt === 0 ? 'Bebas Utang' : formatShortRupiah(debt)}
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                    Cicilan aktif tercatat di SLIK OJK (KKB mobil/motor, kartu kredit, KTA, pinjaman online).
+                  </p>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
+                    Batas Rasio Beban Utang (Debt Service Ratio / DSR)
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                    {[
+                      { val: 30, label: '30% (Aman)', desc: 'Konservatif / Single' },
+                      { val: 35, label: '35% (Moderat)', desc: 'Standar Bank' },
+                      { val: 40, label: '40% (Maksimal)', desc: 'Joint Income' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.val}
+                        type="button"
+                        className={`zeltra-button-secondary ${dsrPercent === opt.val ? 'active' : ''}`}
+                        style={{
+                          padding: '10px 8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          textAlign: 'center',
+                          borderColor: dsrPercent === opt.val ? 'var(--emerald-mint)' : undefined,
+                        }}
+                        onClick={() => setDsrPercent(opt.val)}
+                      >
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: dsrPercent === opt.val ? 'var(--emerald-mint)' : 'var(--text-primary)' }}>
+                          {opt.label}
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {opt.desc}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                    Prinsip kehati-hatian Pasal 8 UU Perbankan & POJK 42/2017 untuk menjaga stabilitas arus kas debitur.
+                  </p>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Perkiraan Suku Bunga KPR
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--cyan-electric)' }}>
+                      {annualRate.toFixed(2)} % p.a.
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={3.0}
+                    max={14.0}
+                    step={0.1}
+                    value={annualRate}
+                    onChange={(e) => setAnnualRate(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[5.0, 6.5, 7.0, 8.5, 10.0].map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        className={`zeltra-chip ${annualRate === r ? 'active' : ''}`}
+                        onClick={() => setAnnualRate(r)}
+                      >
+                        {r.toFixed(1)}% {r === 5.0 ? '(FLPP)' : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Rencana Tenor KPR
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {tenorYears} Tahun ({tenorYears * 12} Bulan)
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={1}
+                    max={30}
+                    step={1}
+                    value={tenorYears}
+                    onChange={(e) => setTenorYears(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[10, 15, 20, 25].map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        className={`zeltra-chip ${tenorYears === t ? 'active' : ''}`}
+                        onClick={() => setTenorYears(t)}
+                      >
+                        {t} Thn
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Porsi Uang Muka (DP) yang Disiapkan
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {dpPercent} %
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={0}
+                    max={50}
+                    step={5}
+                    value={dpPercent}
+                    onChange={(e) => setDpPercent(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[10, 15, 20, 30].map((dp) => (
+                      <button
+                        key={dp}
+                        type="button"
+                        className={`zeltra-chip ${dpPercent === dp ? 'active' : ''}`}
+                        onClick={() => setDpPercent(dp)}
+                      >
+                        {dp}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : isNotaryFee ? (
               /* KPR Notary Fee Inputs */
               <>
                 <div>
@@ -868,7 +1120,9 @@ export function UniversalCalculatorView({ schema }: Props) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <span style={{ fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-                {isNotaryFee
+                {isHomeAffordability
+                  ? 'Harga Rumah Maksimal yang Mampu Dibeli'
+                  : isNotaryFee
                   ? 'Estimasi Total Biaya Notaris & PPAT KPR'
                   : isSellerTax
                   ? 'Estimasi PPh Final Penjual Properti'
@@ -881,7 +1135,9 @@ export function UniversalCalculatorView({ schema }: Props) {
                   : 'Estimasi Angsuran Bulanan'}
               </span>
               <span className="zeltra-badge zeltra-badge-mint">
-                {isNotaryFee
+                {isHomeAffordability
+                  ? `DSR ${dsrPercent}% BI`
+                  : isNotaryFee
                   ? 'Paket Akad KPR'
                   : isSellerTax
                   ? 'PP 34/2016 e-PHTB'
@@ -904,7 +1160,11 @@ export function UniversalCalculatorView({ schema }: Props) {
                   letterSpacing: '-0.02em',
                 }}
               >
-                {isNotaryFee
+                {isHomeAffordability
+                  ? affordabilityResult
+                    ? formatRupiah(affordabilityResult.max_property_price)
+                    : 'Memuat Engine...'
+                  : isNotaryFee
                   ? notaryResult
                     ? formatRupiah(notaryResult.total_notary_fee)
                     : 'Memuat Engine...'
@@ -929,7 +1189,9 @@ export function UniversalCalculatorView({ schema }: Props) {
                   : 'Memuat Engine...'}
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                {isNotaryFee
+                {isHomeAffordability
+                  ? `Plafon KPR dan harga properti maksimal dengan batas aman cicilan DSR ${dsrPercent}% serta rencana uang muka DP ${dpPercent}%.`
+                  : isNotaryFee
                   ? 'Estimasi total paket biaya legalitas notaris dan PPAT rekanan perbankan saat penandatanganan akad kredit KPR.'
                   : isSellerTax
                   ? 'Pajak penghasilan final yang wajib disetor dan divalidasi via e-PHTB sebelum penandatanganan Akta Jual Beli (AJB).'
@@ -953,7 +1215,42 @@ export function UniversalCalculatorView({ schema }: Props) {
                 borderTop: '1px solid var(--border-subtle)',
               }}
             >
-              {isNotaryFee && notaryResult ? (
+              {isHomeAffordability && affordabilityResult ? (
+                <>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Batas Cicilan KPR / Bulan
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--emerald-mint)' }}>
+                      {formatRupiah(affordabilityResult.max_monthly_installment)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Plafon Pinjaman KPR Maksimal
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--cyan-electric)' }}>
+                      {formatRupiah(affordabilityResult.max_loan_principal)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Dana Uang Muka (DP {affordabilityResult.down_payment_percent})
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {formatRupiah(affordabilityResult.required_down_payment)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Cicilan Utang Berjalan Lainnya
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: otherDebts > 0 ? 'var(--crimson-coral)' : 'var(--text-primary)' }}>
+                      {formatRupiah(affordabilityResult.other_debts)}
+                    </span>
+                  </div>
+                </>
+              ) : isNotaryFee && notaryResult ? (
                 <>
                   <div>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
