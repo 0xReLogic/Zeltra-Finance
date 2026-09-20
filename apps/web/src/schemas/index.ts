@@ -12,6 +12,7 @@ import { pajakBphtbSchema } from './pajak-bphtb';
 import { pajakPenjualPphSchema } from './pajak-penjual-pph';
 import { biayaNotarisKprSchema } from './biaya-notaris-kpr';
 import { kemampuanBeliRumahSchema } from './kemampuan-beli-rumah';
+import { sewaVsBeliRumahSchema } from './sewa-vs-beli-rumah';
 
 export { type ExtendedCalculatorSchema };
 
@@ -30,6 +31,7 @@ export const allCalculatorSchemas: ExtendedCalculatorSchema[] = [
   pajakPenjualPphSchema,
   biayaNotarisKprSchema,
   kemampuanBeliRumahSchema,
+  sewaVsBeliRumahSchema,
 ];
 
 

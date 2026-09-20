@@ -70,6 +70,24 @@ pub struct HomeAffordabilityResult {
     pub tenor_months: u32,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct RentVsBuyResult {
+    pub property_price: String,
+    pub initial_monthly_rent: String,
+    pub analysis_period_years: u32,
+    pub total_buy_initial_cost: String,
+    pub monthly_kpr_installment: String,
+    pub buy_property_future_value: String,
+    pub buy_remaining_loan: String,
+    pub buy_net_wealth: String,
+    pub rent_investment_future_value: String,
+    pub rent_cashflow_investment_value: String,
+    pub rent_total_net_wealth: String,
+    pub net_difference: String,
+    pub recommendation: String,
+    pub break_even_year: Option<u32>,
+}
+
 
 
 

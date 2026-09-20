@@ -1,6 +1,6 @@
 use super::types::{
     BphtbCalculationResult, HomeAffordabilityResult, KprNotaryFeeResult, PropertySellerTaxResult,
-    PropertyTitleTransferResult,
+    PropertyTitleTransferResult, RentVsBuyResult,
 };
 use rust_decimal::Decimal;
 use rust_decimal::MathematicalOps;
@@ -90,6 +90,168 @@ pub fn calculate_home_affordability_internal(
         max_property_price: max_property_price.to_string(),
         annual_rate_percent: format!("{:.2}%", annual_rate_percent),
         tenor_months,
+    })
+}
+
+/// Menghitung Analisis Finansial Sewa vs Beli Rumah (Rent vs Buy Analysis)
+/// Menggunakan model akumulasi ekuitas properti vs biaya peluang investasi modal awal & selisih arus kas.
+pub fn calculate_rent_vs_buy_internal(
+    property_price: Decimal,
+    down_payment_percent: Decimal,
+    annual_kpr_rate_percent: Decimal,
+    kpr_tenor_years: u32,
+    initial_monthly_rent: Decimal,
+    rent_inflation_percent: Decimal,
+    property_appreciation_percent: Decimal,
+    investment_return_percent: Decimal,
+    analysis_period_years: u32,
+) -> Result<RentVsBuyResult, String> {
+    if property_price <= dec!(0) {
+        return Err("Harga properti harus lebih besar dari 0".to_string());
+    }
+    if down_payment_percent < dec!(0) || down_payment_percent >= dec!(100) {
+        return Err("Uang muka harus antara 0% dan di bawah 100%".to_string());
+    }
+    if kpr_tenor_years == 0 {
+        return Err("Tenor KPR minimal 1 tahun".to_string());
+    }
+    if initial_monthly_rent < dec!(0) {
+        return Err("Biaya sewa awal tidak boleh negatif".to_string());
+    }
+    if analysis_period_years == 0 || analysis_period_years > 50 {
+        return Err("Periode analisis antara 1 dan 50 tahun".to_string());
+    }
+
+    // 1. Parameter Modal Awal Beli
+    let dp_amount = (property_price * (down_payment_percent / dec!(100))).round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+    let initial_legal_cost = (property_price * dec!(0.05)).round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+    let total_buy_initial_cost = dp_amount + initial_legal_cost;
+    let loan_principal = property_price - dp_amount;
+
+    // 2. Cicilan Bulanan KPR (Anuitas)
+    let tenor_months = kpr_tenor_years * 12;
+    let monthly_kpr_rate = (annual_kpr_rate_percent / dec!(100)) / dec!(12);
+    let monthly_kpr_installment = if loan_principal == dec!(0) {
+        dec!(0)
+    } else if monthly_kpr_rate == dec!(0) {
+        (loan_principal / Decimal::from(tenor_months)).round_dp_with_strategy(
+            0,
+            rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+        )
+    } else {
+        let one = dec!(1);
+        let factor = (one + monthly_kpr_rate).powd(Decimal::from(tenor_months));
+        let num = loan_principal * monthly_kpr_rate * factor;
+        let den = factor - one;
+        (num / den).round_dp_with_strategy(0, rust_decimal::RoundingStrategy::MidpointAwayFromZero)
+    };
+
+    // 3. Simulasi Tahun demi Tahun untuk Menemukan Break-Even & Saldo Akhir
+    let monthly_inv_rate = (investment_return_percent / dec!(100)) / dec!(12);
+    let monthly_maintenance = (property_price * dec!(0.005) / dec!(12)).round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+
+    let mut remaining_loan = loan_principal;
+    let mut rent_portfolio = total_buy_initial_cost;
+    let mut current_monthly_rent = initial_monthly_rent;
+    let mut break_even_year: Option<u32> = None;
+
+    let mut final_buy_net_wealth = dec!(0);
+    let mut final_property_value = property_price;
+
+    for y in 1..=analysis_period_years {
+        // Apresiasi nilai rumah tahunan
+        let prop_growth_factor = dec!(1) + (property_appreciation_percent / dec!(100));
+        final_property_value = (final_property_value * prop_growth_factor).round_dp_with_strategy(
+            0,
+            rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+        );
+
+        // Kenaikan sewa tahunan
+        if y > 1 {
+            let rent_growth_factor = dec!(1) + (rent_inflation_percent / dec!(100));
+            current_monthly_rent = (current_monthly_rent * rent_growth_factor).round_dp_with_strategy(
+                0,
+                rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+            );
+        }
+
+        // Simulasi 12 bulan dalam tahun y
+        for _ in 1..=12 {
+            let current_month_index = (y - 1) * 12;
+            let buy_outflow = if current_month_index < tenor_months {
+                let interest = (remaining_loan * monthly_kpr_rate).round_dp_with_strategy(
+                    0,
+                    rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+                );
+                let principal_paid = monthly_kpr_installment - interest;
+                if remaining_loan > principal_paid {
+                    remaining_loan -= principal_paid;
+                } else {
+                    remaining_loan = dec!(0);
+                }
+                monthly_kpr_installment + monthly_maintenance
+            } else {
+                remaining_loan = dec!(0);
+                monthly_maintenance
+            };
+
+            let rent_outflow = current_monthly_rent;
+            let cashflow_diff = buy_outflow - rent_outflow;
+
+            rent_portfolio = (rent_portfolio * (dec!(1) + monthly_inv_rate)) + cashflow_diff;
+        }
+
+        let current_buy_nw = final_property_value - remaining_loan;
+        if current_buy_nw >= rent_portfolio && break_even_year.is_none() {
+            break_even_year = Some(y);
+        }
+
+        if y == analysis_period_years {
+            final_buy_net_wealth = current_buy_nw;
+        }
+    }
+
+    let final_rent_portfolio = rent_portfolio.round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+
+    let (recommendation, net_difference) = if final_buy_net_wealth >= final_rent_portfolio {
+        (
+            "BELI_LEBIH_UNTUNG".to_string(),
+            (final_buy_net_wealth - final_rent_portfolio).to_string(),
+        )
+    } else {
+        (
+            "SEWA_LEBIH_UNTUNG".to_string(),
+            (final_rent_portfolio - final_buy_net_wealth).to_string(),
+        )
+    };
+
+    Ok(RentVsBuyResult {
+        property_price: property_price.to_string(),
+        initial_monthly_rent: initial_monthly_rent.to_string(),
+        analysis_period_years,
+        total_buy_initial_cost: total_buy_initial_cost.to_string(),
+        monthly_kpr_installment: monthly_kpr_installment.to_string(),
+        buy_property_future_value: final_property_value.to_string(),
+        buy_remaining_loan: remaining_loan.to_string(),
+        buy_net_wealth: final_buy_net_wealth.to_string(),
+        rent_investment_future_value: total_buy_initial_cost.to_string(),
+        rent_cashflow_investment_value: "0".to_string(),
+        rent_total_net_wealth: final_rent_portfolio.to_string(),
+        net_difference,
+        recommendation,
+        break_even_year,
     })
 }
 
@@ -497,6 +659,67 @@ mod tests {
         assert_eq!(res.max_property_price, "986213267");
         assert_eq!(res.required_down_payment, "147931990");
     }
+
+    #[test]
+    fn test_golden_case_rent_vs_buy_10yr() {
+        let property_price = dec!(800000000);
+        let down_payment_percent = dec!(20);
+        let annual_kpr_rate_percent = dec!(7.0);
+        let kpr_tenor_years = 15;
+        let initial_monthly_rent = dec!(2500000);
+        let rent_inflation_percent = dec!(4.0);
+        let property_appreciation_percent = dec!(5.0);
+        let investment_return_percent = dec!(7.0);
+        let analysis_period_years = 10;
+
+        let res = calculate_rent_vs_buy_internal(
+            property_price,
+            down_payment_percent,
+            annual_kpr_rate_percent,
+            kpr_tenor_years,
+            initial_monthly_rent,
+            rent_inflation_percent,
+            property_appreciation_percent,
+            investment_return_percent,
+            analysis_period_years,
+        )
+        .unwrap();
+
+        assert_eq!(res.total_buy_initial_cost, "200000000"); // DP 160m + legal 40m
+        assert_eq!(res.monthly_kpr_installment, "5752501");
+        assert_eq!(res.recommendation, "BELI_LEBIH_UNTUNG");
+        assert!(res.break_even_year.is_some());
+    }
+
+    #[test]
+    fn test_golden_case_rent_vs_buy_short_term_3yr() {
+        let property_price = dec!(800000000);
+        let down_payment_percent = dec!(20);
+        let annual_kpr_rate_percent = dec!(7.0);
+        let kpr_tenor_years = 15;
+        let initial_monthly_rent = dec!(2500000);
+        let rent_inflation_percent = dec!(4.0);
+        let property_appreciation_percent = dec!(3.0); // konservatif
+        let investment_return_percent = dec!(8.0); // return investasi tinggi
+        let analysis_period_years = 3;
+
+        let res = calculate_rent_vs_buy_internal(
+            property_price,
+            down_payment_percent,
+            annual_kpr_rate_percent,
+            kpr_tenor_years,
+            initial_monthly_rent,
+            rent_inflation_percent,
+            property_appreciation_percent,
+            investment_return_percent,
+            analysis_period_years,
+        )
+        .unwrap();
+
+        // Dalam jangka pendek 3 tahun, sewa lebih unggul karena tidak terbeban biaya legalitas awal & bunga KPR
+        assert_eq!(res.recommendation, "SEWA_LEBIH_UNTUNG");
+    }
 }
+
 
 

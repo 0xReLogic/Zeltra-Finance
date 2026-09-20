@@ -160,6 +160,23 @@ export interface HomeAffordabilityResult {
   tenor_months: number;
 }
 
+export interface RentVsBuyResult {
+  property_price: string;
+  initial_monthly_rent: string;
+  analysis_period_years: number;
+  total_buy_initial_cost: string;
+  monthly_kpr_installment: string;
+  buy_property_future_value: string;
+  buy_remaining_loan: string;
+  buy_net_wealth: string;
+  rent_investment_future_value: string;
+  rent_cashflow_investment_value: string;
+  rent_total_net_wealth: string;
+  net_difference: string;
+  recommendation: string;
+  break_even_year?: number;
+}
+
 
 
 

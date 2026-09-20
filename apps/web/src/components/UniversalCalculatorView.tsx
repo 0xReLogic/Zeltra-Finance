@@ -11,6 +11,7 @@ import {
   PropertySellerTaxResult,
   KprNotaryFeeResult,
   HomeAffordabilityResult,
+  RentVsBuyResult,
 } from '@zeltra/shared-contracts';
 
 interface Props {
@@ -32,6 +33,17 @@ interface WasmEngineApi {
     tenor: number,
     dp: string
   ) => string;
+  calculate_rent_vs_buy?: (
+    price: string,
+    dp: string,
+    kprRate: string,
+    tenor: number,
+    rent: string,
+    rentInflation: string,
+    appreciation: string,
+    invReturn: string,
+    period: number
+  ) => string;
   get_engine_version: () => string;
 }
 
@@ -44,12 +56,20 @@ export function UniversalCalculatorView({ schema }: Props) {
   const isSellerTax = schema.engineFunction === 'calculate_property_seller_tax';
   const isNotaryFee = schema.engineFunction === 'calculate_kpr_notary_fee';
   const isHomeAffordability = schema.engineFunction === 'calculate_home_affordability';
-  const isStatutory = isTitleTransfer || isBphtb || isSellerTax || isNotaryFee || isHomeAffordability;
+  const isRentVsBuy = schema.engineFunction === 'calculate_rent_vs_buy';
+  const isStatutory = isTitleTransfer || isBphtb || isSellerTax || isNotaryFee || isHomeAffordability || isRentVsBuy;
 
   // State for Home Affordability
   const [monthlyIncome, setMonthlyIncome] = useState<number>(15000000);
   const [otherDebts, setOtherDebts] = useState<number>(0);
   const [dsrPercent, setDsrPercent] = useState<number>(30);
+
+  // State for Rent vs Buy
+  const [initialRent, setInitialRent] = useState<number>(2500000);
+  const [rentInflation, setRentInflation] = useState<number>(4.0);
+  const [propertyAppreciation, setPropertyAppreciation] = useState<number>(5.0);
+  const [investmentReturn, setInvestmentReturn] = useState<number>(7.0);
+  const [analysisPeriodYears, setAnalysisPeriodYears] = useState<number>(10);
 
   // State for General KPR / Title Transfer / BPHTB / Seller Tax / Notary (Property Value / NPOP)
   const [propertyPrice, setPropertyPrice] = useState<number>(750000000);
@@ -78,6 +98,7 @@ export function UniversalCalculatorView({ schema }: Props) {
   const [sellerTaxResult, setSellerTaxResult] = useState<PropertySellerTaxResult | null>(null);
   const [notaryResult, setNotaryResult] = useState<KprNotaryFeeResult | null>(null);
   const [affordabilityResult, setAffordabilityResult] = useState<HomeAffordabilityResult | null>(null);
+  const [rentVsBuyResult, setRentVsBuyResult] = useState<RentVsBuyResult | null>(null);
 
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [showSchedule, setShowSchedule] = useState<boolean>(false);
@@ -104,6 +125,17 @@ export function UniversalCalculatorView({ schema }: Props) {
             tenor: number,
             dp: string
           ) => string;
+          calculate_rent_vs_buy?: (
+            price: string,
+            dp: string,
+            kprRate: string,
+            tenor: number,
+            rent: string,
+            rentInflation: string,
+            appreciation: string,
+            invReturn: string,
+            period: number
+          ) => string;
           get_engine_version: () => string;
         };
         await wasmModule.default();
@@ -116,6 +148,7 @@ export function UniversalCalculatorView({ schema }: Props) {
             calculate_property_seller_tax: wasmModule.calculate_property_seller_tax,
             calculate_kpr_notary_fee: wasmModule.calculate_kpr_notary_fee,
             calculate_home_affordability: wasmModule.calculate_home_affordability,
+            calculate_rent_vs_buy: wasmModule.calculate_rent_vs_buy,
             get_engine_version: wasmModule.get_engine_version,
           });
         }
@@ -134,7 +167,23 @@ export function UniversalCalculatorView({ schema }: Props) {
     if (!wasmEngine) return;
 
     try {
-      if (isHomeAffordability) {
+      if (isRentVsBuy) {
+        if (wasmEngine.calculate_rent_vs_buy) {
+          const rawJson = wasmEngine.calculate_rent_vs_buy(
+            propertyPrice.toString(),
+            dpPercent.toFixed(1),
+            annualRate.toFixed(2),
+            tenorYears,
+            initialRent.toString(),
+            rentInflation.toFixed(1),
+            propertyAppreciation.toFixed(1),
+            investmentReturn.toFixed(1),
+            analysisPeriodYears
+          );
+          const parsed: RentVsBuyResult = JSON.parse(rawJson);
+          setRentVsBuyResult(parsed);
+        }
+      } else if (isHomeAffordability) {
         if (wasmEngine.calculate_home_affordability) {
           const tenorMonths = tenorYears * 12;
           const rawJson = wasmEngine.calculate_home_affordability(
@@ -213,24 +262,30 @@ export function UniversalCalculatorView({ schema }: Props) {
     }
   }, [
     wasmEngine,
+    isRentVsBuy,
     isHomeAffordability,
     isNotaryFee,
     isSellerTax,
     isBphtb,
     isTitleTransfer,
     isGeneralKpr,
+    propertyPrice,
+    dpPercent,
+    annualRate,
+    tenorYears,
+    initialRent,
+    rentInflation,
+    propertyAppreciation,
+    investmentReturn,
+    analysisPeriodYears,
     monthlyIncome,
     otherDebts,
     dsrPercent,
-    propertyPrice,
     sellerTaxRate,
     npoptkpAmount,
     bphtbRate,
-    dpPercent,
     calculationType,
     principalDirect,
-    annualRate,
-    tenorYears,
   ]);
 
 
@@ -370,7 +425,9 @@ export function UniversalCalculatorView({ schema }: Props) {
         <div className="zeltra-card" style={{ padding: '28px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 700 }}>
-              {isHomeAffordability
+              {isRentVsBuy
+                ? 'Parameter Sewa vs Beli Rumah'
+                : isHomeAffordability
                 ? 'Kapasitas Finansial & Gaji'
                 : isNotaryFee
                 ? 'Parameter Akad KPR'
@@ -386,7 +443,192 @@ export function UniversalCalculatorView({ schema }: Props) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-            {isHomeAffordability ? (
+            {isRentVsBuy ? (
+              /* Rent vs Buy Inputs */
+              <>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Harga Pembelian Rumah (Rupiah)
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--emerald-mint)' }}>
+                      {formatRupiah(propertyPrice)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={100000000}
+                    max={5000000000}
+                    step={25000000}
+                    value={propertyPrice}
+                    onChange={(e) => setPropertyPrice(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[500000000, 800000000, 1200000000, 2000000000].map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        className={`zeltra-chip ${propertyPrice === p ? 'active' : ''}`}
+                        onClick={() => setPropertyPrice(p)}
+                      >
+                        {formatShortRupiah(p)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Uang Muka Beli Rumah (DP %)
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {dpPercent} % ({formatRupiah(Math.round((propertyPrice * dpPercent) / 100))})
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={0}
+                    max={50}
+                    step={5}
+                    value={dpPercent}
+                    onChange={(e) => setDpPercent(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[10, 15, 20, 30].map((dp) => (
+                      <button
+                        key={dp}
+                        type="button"
+                        className={`zeltra-chip ${dpPercent === dp ? 'active' : ''}`}
+                        onClick={() => setDpPercent(dp)}
+                      >
+                        {dp}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Biaya Sewa Rumah Setara per Bulan
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--cyan-electric)' }}>
+                      {formatRupiah(initialRent)} / bulan
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={1000000}
+                    max={25000000}
+                    step={250000}
+                    value={initialRent}
+                    onChange={(e) => setInitialRent(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[1500000, 2500000, 4000000, 7000000].map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        className={`zeltra-chip ${initialRent === r ? 'active' : ''}`}
+                        onClick={() => setInitialRent(r)}
+                      >
+                        {formatShortRupiah(r)}/bln
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Periode Analisis Jangka Waktu
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--emerald-mint)' }}>
+                      {analysisPeriodYears} Tahun
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={1}
+                    max={30}
+                    step={1}
+                    value={analysisPeriodYears}
+                    onChange={(e) => setAnalysisPeriodYears(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[3, 5, 10, 15, 20].map((yr) => (
+                      <button
+                        key={yr}
+                        type="button"
+                        className={`zeltra-chip ${analysisPeriodYears === yr ? 'active' : ''}`}
+                        onClick={() => setAnalysisPeriodYears(yr)}
+                      >
+                        {yr} Tahun
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
+                      Kenaikan Rumah (%/thn)
+                    </label>
+                    <input
+                      type="number"
+                      className="zeltra-input"
+                      value={propertyAppreciation}
+                      step={0.5}
+                      onChange={(e) => setPropertyAppreciation(Number(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
+                      Kenaikan Sewa (%/thn)
+                    </label>
+                    <input
+                      type="number"
+                      className="zeltra-input"
+                      value={rentInflation}
+                      step={0.5}
+                      onChange={(e) => setRentInflation(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
+                      Suku Bunga KPR (% p.a.)
+                    </label>
+                    <input
+                      type="number"
+                      className="zeltra-input"
+                      value={annualRate}
+                      step={0.1}
+                      onChange={(e) => setAnnualRate(Number(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
+                      Return Investasi (% p.a.)
+                    </label>
+                    <input
+                      type="number"
+                      className="zeltra-input"
+                      value={investmentReturn}
+                      step={0.5}
+                      onChange={(e) => setInvestmentReturn(Number(e.target.value))}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : isHomeAffordability ? (
               /* Home Affordability Inputs */
               <>
                 <div>
@@ -1120,7 +1362,9 @@ export function UniversalCalculatorView({ schema }: Props) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <span style={{ fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-                {isHomeAffordability
+                {isRentVsBuy
+                  ? 'Rekomendasi Keputusan Finansial'
+                  : isHomeAffordability
                   ? 'Harga Rumah Maksimal yang Mampu Dibeli'
                   : isNotaryFee
                   ? 'Estimasi Total Biaya Notaris & PPAT KPR'
@@ -1135,7 +1379,13 @@ export function UniversalCalculatorView({ schema }: Props) {
                   : 'Estimasi Angsuran Bulanan'}
               </span>
               <span className="zeltra-badge zeltra-badge-mint">
-                {isHomeAffordability
+                {isRentVsBuy
+                  ? rentVsBuyResult
+                    ? rentVsBuyResult.recommendation === 'BELI_LEBIH_UNTUNG'
+                      ? 'Beli Lebih Untung'
+                      : 'Sewa Lebih Untung'
+                    : 'Rent vs Buy'
+                  : isHomeAffordability
                   ? `DSR ${dsrPercent}% BI`
                   : isNotaryFee
                   ? 'Paket Akad KPR'
@@ -1156,11 +1406,21 @@ export function UniversalCalculatorView({ schema }: Props) {
                   fontSize: '38px',
                   fontWeight: 800,
                   fontFamily: 'var(--font-display)',
-                  color: 'var(--emerald-mint)',
+                  color: isRentVsBuy
+                    ? rentVsBuyResult?.recommendation === 'BELI_LEBIH_UNTUNG'
+                      ? 'var(--emerald-mint)'
+                      : 'var(--cyan-electric)'
+                    : 'var(--emerald-mint)',
                   letterSpacing: '-0.02em',
                 }}
               >
-                {isHomeAffordability
+                {isRentVsBuy
+                  ? rentVsBuyResult
+                    ? rentVsBuyResult.recommendation === 'BELI_LEBIH_UNTUNG'
+                      ? 'LEBIH UNTUNG BELI'
+                      : 'LEBIH UNTUNG SEWA'
+                    : 'Memuat Engine...'
+                  : isHomeAffordability
                   ? affordabilityResult
                     ? formatRupiah(affordabilityResult.max_property_price)
                     : 'Memuat Engine...'
@@ -1189,7 +1449,11 @@ export function UniversalCalculatorView({ schema }: Props) {
                   : 'Memuat Engine...'}
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                {isHomeAffordability
+                {isRentVsBuy
+                  ? rentVsBuyResult
+                    ? `Selisih keuntungan kekayaan bersih ${formatRupiah(rentVsBuyResult.net_difference)} dalam horizon ${analysisPeriodYears} tahun. ${rentVsBuyResult.break_even_year ? `(Titik impas beli: Tahun ke-${rentVsBuyResult.break_even_year})` : ''}`
+                    : 'Menganalisis akumulasi aset properti vs return investasi biaya peluang modal.'
+                  : isHomeAffordability
                   ? `Plafon KPR dan harga properti maksimal dengan batas aman cicilan DSR ${dsrPercent}% serta rencana uang muka DP ${dpPercent}%.`
                   : isNotaryFee
                   ? 'Estimasi total paket biaya legalitas notaris dan PPAT rekanan perbankan saat penandatanganan akad kredit KPR.'
@@ -1215,7 +1479,42 @@ export function UniversalCalculatorView({ schema }: Props) {
                 borderTop: '1px solid var(--border-subtle)',
               }}
             >
-              {isHomeAffordability && affordabilityResult ? (
+              {isRentVsBuy && rentVsBuyResult ? (
+                <>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Kekayaan Bersih Beli (Thn {analysisPeriodYears})
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--emerald-mint)' }}>
+                      {formatRupiah(rentVsBuyResult.buy_net_wealth)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Kekayaan Bersih Sewa (Thn {analysisPeriodYears})
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--cyan-electric)' }}>
+                      {formatRupiah(rentVsBuyResult.rent_total_net_wealth)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Nilai Properti di Masa Depan
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {formatRupiah(rentVsBuyResult.buy_property_future_value)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Cicilan KPR / Bulan
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {formatRupiah(rentVsBuyResult.monthly_kpr_installment)}
+                    </span>
+                  </div>
+                </>
+              ) : isHomeAffordability && affordabilityResult ? (
                 <>
                   <div>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>

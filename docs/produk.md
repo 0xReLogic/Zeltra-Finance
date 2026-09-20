@@ -8,8 +8,8 @@ Dokumen ini memuat daftar 150 kalkulator finansial yang dikelompokkan ke dalam 1
 
 ## Status Progres Eksekusi
 - **Total Kalkulator**: 150
-- **Telah Selesai**: 14 / 150 (9.33%)
-- **Berikutnya**: Calculator 15 (Kalkulator Sewa vs Beli Rumah - Rent vs Buy Analysis)
+- **Telah Selesai**: 15 / 150 (10.00%)
+- **Berikutnya**: Calculator 16 (Kalkulator Pelunasan KPR Dipercepat - Early Repayment & Penalty)
 
 ---
 
@@ -30,10 +30,8 @@ Dokumen ini memuat daftar 150 kalkulator finansial yang dikelompokkan ke dalam 1
 - [x] 12. **Kalkulator Pajak Penjual (PPh Properti)**: Hitung potongan 2.5% dari nilai pengalihan hak tanah/bangunan. *(Selesai: [/properti/pajak-penjual-pph/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/pajak-penjual-pph.ts))*
 - [x] 13. **Kalkulator Biaya Notaris KPR**: Estimasi biaya APHT, AJB, dan SKMHT. *(Selesai: [/properti/biaya-notaris-kpr/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/biaya-notaris-kpr.ts))*
 - [x] 14. **Kalkulator Kemampuan Beli Rumah**: Input gaji bulanan, batasan DSR 30%-40%, cicilan utang berjalan, sistem menghitung harga maksimal rumah yang mampu dicicil. *(Selesai: [/properti/kemampuan-beli-rumah/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/kemampuan-beli-rumah.ts))*
+- [x] 15. **Kalkulator Sewa vs Beli Rumah**: Analisis finansial jangka panjang apakah lebih untung sewa atau langsung ambil KPR dengan pembanding biaya peluang investasi modal awal dan titik impas. *(Selesai: [/properti/sewa-vs-beli-rumah/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/sewa-vs-beli-rumah.ts))*
 
-- [ ] 15. **Kalkulator Sewa vs Beli Rumah**: Analisis finansial jangka panjang apakah lebih untung sewa atau langsung ambil KPR.
-
-- [ ] 15. **Kalkulator Sewa vs Beli Rumah**: Analisis finansial jangka panjang apakah lebih untung sewa atau langsung ambil KPR.
 - [ ] 16. **Kalkulator Pelunasan KPR Dipercepat**: Hitung pinalti bank vs penghematan bunga jika bayar pokok ekstra.
 - [ ] 17. **Kalkulator KPR Take Over**: Simulasi pindah KPR antar bank untuk dapet bunga lebih rendah.
 - [ ] 18. **Kalkulator Biaya Bangun Rumah per Meter**: Estimasi total dana proyek konstruksi mandiri.
