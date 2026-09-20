@@ -8,6 +8,7 @@ import {
   GeneralLoanCalculationResult,
   PropertyTitleTransferResult,
   BphtbCalculationResult,
+  PropertySellerTaxResult,
 } from '@zeltra/shared-contracts';
 
 interface Props {
@@ -19,6 +20,7 @@ interface WasmEngineApi {
   calculate_kpr_general: (p: string, dp: string, r: string, t: number, m: string) => string;
   calculate_property_title_transfer?: (v: string) => string;
   calculate_bphtb?: (p: string, n: string, r: string) => string;
+  calculate_property_seller_tax?: (g: string, r: string) => string;
   get_engine_version: () => string;
 }
 
@@ -28,9 +30,10 @@ export function UniversalCalculatorView({ schema }: Props) {
   const isGeneralKpr = schema.engineFunction === 'calculate_kpr_general';
   const isTitleTransfer = schema.engineFunction === 'calculate_property_title_transfer';
   const isBphtb = schema.engineFunction === 'calculate_bphtb';
-  const isStatutory = isTitleTransfer || isBphtb;
+  const isSellerTax = schema.engineFunction === 'calculate_property_seller_tax';
+  const isStatutory = isTitleTransfer || isBphtb || isSellerTax;
 
-  // State for General KPR / Title Transfer / BPHTB (Property Value / NPOP)
+  // State for General KPR / Title Transfer / BPHTB / Seller Tax (Property Value / NPOP)
   const [propertyPrice, setPropertyPrice] = useState<number>(750000000);
   const [dpPercent, setDpPercent] = useState<number>(20);
   const [calculationType, setCalculationType] = useState<string>('annuity');
@@ -38,6 +41,9 @@ export function UniversalCalculatorView({ schema }: Props) {
   // State for BPHTB
   const [npoptkpAmount, setNpoptkpAmount] = useState<number>(80000000);
   const [bphtbRate, setBphtbRate] = useState<number>(5.0);
+
+  // State for Seller Tax (PPh Final)
+  const [sellerTaxRate, setSellerTaxRate] = useState<number>(2.5);
 
   // State for Direct Loan
   const [principalDirect, setPrincipalDirect] = useState<number>(500000000);
@@ -51,6 +57,7 @@ export function UniversalCalculatorView({ schema }: Props) {
   const [generalResult, setGeneralResult] = useState<GeneralLoanCalculationResult | null>(null);
   const [titleTransferResult, setTitleTransferResult] = useState<PropertyTitleTransferResult | null>(null);
   const [bphtbResult, setBphtbResult] = useState<BphtbCalculationResult | null>(null);
+  const [sellerTaxResult, setSellerTaxResult] = useState<PropertySellerTaxResult | null>(null);
 
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [showSchedule, setShowSchedule] = useState<boolean>(false);
@@ -67,6 +74,7 @@ export function UniversalCalculatorView({ schema }: Props) {
           calculate_kpr_general: (p: string, dp: string, r: string, t: number, m: string) => string;
           calculate_property_title_transfer?: (v: string) => string;
           calculate_bphtb?: (p: string, n: string, r: string) => string;
+          calculate_property_seller_tax?: (g: string, r: string) => string;
           get_engine_version: () => string;
         };
         await wasmModule.default();
@@ -76,6 +84,7 @@ export function UniversalCalculatorView({ schema }: Props) {
             calculate_kpr_general: wasmModule.calculate_kpr_general,
             calculate_property_title_transfer: wasmModule.calculate_property_title_transfer,
             calculate_bphtb: wasmModule.calculate_bphtb,
+            calculate_property_seller_tax: wasmModule.calculate_property_seller_tax,
             get_engine_version: wasmModule.get_engine_version,
           });
         }
@@ -94,7 +103,16 @@ export function UniversalCalculatorView({ schema }: Props) {
     if (!wasmEngine) return;
 
     try {
-      if (isBphtb) {
+      if (isSellerTax) {
+        if (wasmEngine.calculate_property_seller_tax) {
+          const rawJson = wasmEngine.calculate_property_seller_tax(
+            propertyPrice.toString(),
+            sellerTaxRate.toFixed(2)
+          );
+          const parsed: PropertySellerTaxResult = JSON.parse(rawJson);
+          setSellerTaxResult(parsed);
+        }
+      } else if (isBphtb) {
         if (wasmEngine.calculate_bphtb) {
           const rawJson = wasmEngine.calculate_bphtb(
             propertyPrice.toString(),
@@ -137,10 +155,12 @@ export function UniversalCalculatorView({ schema }: Props) {
     }
   }, [
     wasmEngine,
+    isSellerTax,
     isBphtb,
     isTitleTransfer,
     isGeneralKpr,
     propertyPrice,
+    sellerTaxRate,
     npoptkpAmount,
     bphtbRate,
     dpPercent,
@@ -149,6 +169,7 @@ export function UniversalCalculatorView({ schema }: Props) {
     annualRate,
     tenorYears,
   ]);
+
 
 
 
@@ -285,7 +306,9 @@ export function UniversalCalculatorView({ schema }: Props) {
         <div className="zeltra-card" style={{ padding: '28px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 700 }}>
-              {isBphtb
+              {isSellerTax
+                ? 'Parameter Pajak Penjual (PPh Properti)'
+                : isBphtb
                 ? 'Parameter Pajak BPHTB'
                 : isTitleTransfer
                 ? 'Nilai Transaksi Properti'
@@ -295,7 +318,102 @@ export function UniversalCalculatorView({ schema }: Props) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-            {isBphtb ? (
+            {isSellerTax ? (
+              /* Seller Tax (PPh Final) Inputs */
+              <>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Nilai Transaksi / NJOP Pengalihan
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--emerald-mint)' }}>
+                      {formatRupiah(propertyPrice)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={50000000}
+                    max={5000000000}
+                    step={25000000}
+                    value={propertyPrice}
+                    onChange={(e) => setPropertyPrice(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[350000000, 600000000, 800000000, 1500000000, 3000000000].map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        className={`zeltra-chip ${propertyPrice === p ? 'active' : ''}`}
+                        onClick={() => setPropertyPrice(p)}
+                      >
+                        {formatShortRupiah(p)}
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                    Jumlah bruto nilai pengalihan hak yang sesungguhnya diterima penjual atau NJOP PBB-P2 tertinggi.
+                  </p>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
+                    Kategori Pengalihan (PP 34/2016)
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
+                    {[
+                      { rate: 2.5, label: 'Rumah & Properti Umum (2.5%)', desc: 'Tarif standar jual beli tanah/bangunan non-subsidi' },
+                      { rate: 1.0, label: 'Rumah Sederhana / Subsidi Developer (1.0%)', desc: 'Pengalihan rumah sederhana/rusunami oleh developer' },
+                      { rate: 0.0, label: 'Kepentingan Umum / Hibah Sedarah (0.0%)', desc: 'Pengalihan kepada pemerintah/BUMN atau waris/hibah (SKB)' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.rate}
+                        type="button"
+                        className={`zeltra-button-secondary ${sellerTaxRate === opt.rate ? 'active' : ''}`}
+                        style={{
+                          padding: '10px 14px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          borderColor: sellerTaxRate === opt.rate ? 'var(--emerald-mint)' : undefined,
+                        }}
+                        onClick={() => setSellerTaxRate(opt.rate)}
+                      >
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: sellerTaxRate === opt.rate ? 'var(--emerald-mint)' : 'var(--text-primary)' }}>
+                          {opt.label}
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {opt.desc}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Penyesuaian Tarif PPh Final
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--cyan-electric)' }}>
+                      {sellerTaxRate.toFixed(2)} %
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={0.0}
+                    max={5.0}
+                    step={0.1}
+                    value={sellerTaxRate}
+                    onChange={(e) => setSellerTaxRate(Number(e.target.value))}
+                  />
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                    Pasal 2 PP No. 34/2016 jo. UU PPh: PPh Final bersifat mengikat atas seluruh penghasilan pengalihan hak.
+                  </p>
+                </div>
+              </>
+            ) : isBphtb ? (
               /* BPHTB Inputs */
               <>
                 <div>
@@ -649,7 +767,9 @@ export function UniversalCalculatorView({ schema }: Props) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <span style={{ fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-                {isBphtb
+                {isSellerTax
+                  ? 'Estimasi PPh Final Penjual Properti'
+                  : isBphtb
                   ? 'Estimasi Pajak Pembeli BPHTB Terutang'
                   : isTitleTransfer
                   ? 'Estimasi Total Biaya Balik Nama (BBN)'
@@ -658,7 +778,13 @@ export function UniversalCalculatorView({ schema }: Props) {
                   : 'Estimasi Angsuran Bulanan'}
               </span>
               <span className="zeltra-badge zeltra-badge-mint">
-                {isBphtb ? 'UU HKPD 1/2022' : isTitleTransfer ? 'PP 128/2015 BPN' : 'Fixed-Point Math'}
+                {isSellerTax
+                  ? 'PP 34/2016 e-PHTB'
+                  : isBphtb
+                  ? 'UU HKPD 1/2022'
+                  : isTitleTransfer
+                  ? 'PP 128/2015 BPN'
+                  : 'Fixed-Point Math'}
               </span>
             </div>
 
@@ -673,7 +799,11 @@ export function UniversalCalculatorView({ schema }: Props) {
                   letterSpacing: '-0.02em',
                 }}
               >
-                {isBphtb
+                {isSellerTax
+                  ? sellerTaxResult
+                    ? formatRupiah(sellerTaxResult.pph_final_amount)
+                    : 'Memuat Engine...'
+                  : isBphtb
                   ? bphtbResult
                     ? formatRupiah(bphtbResult.bphtb_due)
                     : 'Memuat Engine...'
@@ -690,7 +820,9 @@ export function UniversalCalculatorView({ schema }: Props) {
                   : 'Memuat Engine...'}
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                {isBphtb
+                {isSellerTax
+                  ? 'Pajak penghasilan final yang wajib disetor dan divalidasi via e-PHTB sebelum penandatanganan Akta Jual Beli (AJB).'
+                  : isBphtb
                   ? 'Pajak daerah resmi yang wajib disetor ke kas daerah sebelum penandatanganan Akta Jual Beli (AJB).'
                   : isTitleTransfer
                   ? 'Estimasi resmi PNBP kantor BPN dan honorarium PPAT sesuai regulasi Menteri ATR/BPN.'
@@ -710,7 +842,43 @@ export function UniversalCalculatorView({ schema }: Props) {
                 borderTop: '1px solid var(--border-subtle)',
               }}
             >
-              {isBphtb && bphtbResult ? (
+              {isSellerTax && sellerTaxResult ? (
+                <>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Nilai Bruto Pengalihan
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {formatRupiah(sellerTaxResult.gross_value)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Tarif PPh Final (PP 34/2016)
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--crimson-coral)' }}>
+                      {sellerTaxResult.tax_rate_percent}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Potongan Pajak PPh Terutang
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--crimson-coral)' }}>
+                      {formatRupiah(sellerTaxResult.pph_final_amount)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Estimasi Dana Bersih Penjual
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--emerald-mint)' }}>
+                      {formatRupiah(sellerTaxResult.net_proceeds)}
+                    </span>
+                  </div>
+                </>
+              ) : isBphtb && bphtbResult ? (
+
                 <>
                   <div>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>

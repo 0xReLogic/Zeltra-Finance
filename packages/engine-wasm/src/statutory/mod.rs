@@ -1,11 +1,35 @@
 pub mod property;
 pub mod types;
 
-pub use property::{calculate_bphtb_internal, calculate_property_title_transfer_internal};
-pub use types::{BphtbCalculationResult, Pph21CalculationResult, PropertyTitleTransferResult};
+pub use property::{
+    calculate_bphtb_internal, calculate_property_seller_tax_internal,
+    calculate_property_title_transfer_internal,
+};
+pub use types::{
+    BphtbCalculationResult, Pph21CalculationResult, PropertySellerTaxResult,
+    PropertyTitleTransferResult,
+};
 
 use rust_decimal::Decimal;
 use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+pub fn calculate_property_seller_tax(
+    gross_value_str: &str,
+    rate_percent_str: &str,
+) -> Result<JsValue, JsValue> {
+    let gross_value = Decimal::from_str_exact(gross_value_str)
+        .map_err(|e| JsValue::from_str(&format!("Nilai bruto properti tidak valid: {}", e)))?;
+    let rate_percent = Decimal::from_str_exact(rate_percent_str)
+        .map_err(|e| JsValue::from_str(&format!("Tarif PPh final tidak valid: {}", e)))?;
+
+    let result = calculate_property_seller_tax_internal(gross_value, rate_percent)
+        .map_err(|e| JsValue::from_str(&e))?;
+
+    let json_str = serde_json::to_string(&result)
+        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?;
+    Ok(JsValue::from_str(&json_str))
+}
 
 #[wasm_bindgen]
 pub fn calculate_bphtb(

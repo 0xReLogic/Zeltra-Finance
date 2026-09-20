@@ -126,5 +126,13 @@ export interface BphtbCalculationResult {
   bphtb_due: string;
 }
 
+export interface PropertySellerTaxResult {
+  gross_value: string;
+  tax_rate_percent: string;
+  pph_final_amount: string;
+  net_proceeds: string;
+}
+
+
 
 

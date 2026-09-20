@@ -33,3 +33,12 @@ pub struct BphtbCalculationResult {
     pub bphtb_due: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct PropertySellerTaxResult {
+    pub gross_value: String,
+    pub tax_rate_percent: String,
+    pub pph_final_amount: String,
+    pub net_proceeds: String,
+}
+
+

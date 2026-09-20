@@ -1,6 +1,36 @@
-use super::types::{BphtbCalculationResult, PropertyTitleTransferResult};
+use super::types::{
+    BphtbCalculationResult, PropertySellerTaxResult, PropertyTitleTransferResult,
+};
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
+
+/// Menghitung Pajak Penjual Properti (PPh Final Pengalihan Hak atas Tanah dan/atau Bangunan)
+/// Berdasarkan Peraturan Pemerintah (PP) No. 34 Tahun 2016 jo. UU PPh Pasal 4 ayat (2).
+pub fn calculate_property_seller_tax_internal(
+    gross_value: Decimal,
+    tax_rate_percent: Decimal,
+) -> Result<PropertySellerTaxResult, String> {
+    if gross_value < dec!(0) {
+        return Err("Nilai bruto pengalihan tidak boleh negatif".to_string());
+    }
+    if tax_rate_percent < dec!(0) || tax_rate_percent > dec!(100) {
+        return Err("Tarif PPh final harus antara 0% dan 100%".to_string());
+    }
+
+    let rate_fraction = tax_rate_percent / dec!(100);
+    let pph_final = (gross_value * rate_fraction).round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+    let net_proceeds = gross_value - pph_final;
+
+    Ok(PropertySellerTaxResult {
+        gross_value: gross_value.to_string(),
+        tax_rate_percent: format!("{:.2}%", tax_rate_percent),
+        pph_final_amount: pph_final.to_string(),
+        net_proceeds: net_proceeds.to_string(),
+    })
+}
 
 /// Menghitung Pajak Pembeli Properti (BPHTB - Bea Perolehan Hak atas Tanah dan Bangunan)
 /// Berdasarkan UU HKPD No. 1 Tahun 2022 Pasal 44 & 45.
@@ -130,6 +160,52 @@ mod tests {
         let res = calculate_bphtb_internal(property_value, npoptkp, rate).unwrap();
         assert_eq!(res.taxable_value, "0");
         assert_eq!(res.bphtb_due, "0");
+    }
+
+    #[test]
+    fn test_golden_case_seller_tax_regular_800m() {
+        let gross_value = dec!(800000000);
+        let rate = dec!(2.5);
+
+        let res = calculate_property_seller_tax_internal(gross_value, rate).unwrap();
+        assert_eq!(res.gross_value, "800000000");
+        assert_eq!(res.tax_rate_percent, "2.50%");
+        assert_eq!(res.pph_final_amount, "20000000");
+        assert_eq!(res.net_proceeds, "780000000");
+    }
+
+    #[test]
+    fn test_golden_case_seller_tax_regular_1500m() {
+        let gross_value = dec!(1500000000);
+        let rate = dec!(2.5);
+
+        let res = calculate_property_seller_tax_internal(gross_value, rate).unwrap();
+        assert_eq!(res.gross_value, "1500000000");
+        assert_eq!(res.tax_rate_percent, "2.50%");
+        assert_eq!(res.pph_final_amount, "37500000");
+        assert_eq!(res.net_proceeds, "1462500000");
+    }
+
+    #[test]
+    fn test_golden_case_seller_tax_subsidi_185m() {
+        let gross_value = dec!(185000000);
+        let rate = dec!(1.0);
+
+        let res = calculate_property_seller_tax_internal(gross_value, rate).unwrap();
+        assert_eq!(res.gross_value, "185000000");
+        assert_eq!(res.tax_rate_percent, "1.00%");
+        assert_eq!(res.pph_final_amount, "1850000");
+        assert_eq!(res.net_proceeds, "183150000");
+    }
+
+    #[test]
+    fn test_golden_case_seller_tax_exempt() {
+        let gross_value = dec!(50000000);
+        let rate = dec!(0.0);
+
+        let res = calculate_property_seller_tax_internal(gross_value, rate).unwrap();
+        assert_eq!(res.pph_final_amount, "0");
+        assert_eq!(res.net_proceeds, "50000000");
     }
 
     #[test]
