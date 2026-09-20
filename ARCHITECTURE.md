@@ -107,8 +107,14 @@ zeltra-finance/
 │   ├── engine-wasm/                 # Rust Wasm Crate (Math Core)
 │   │   ├── Cargo.toml               # wasm-bindgen, rust_decimal, serde
 │   │   └── src/
-│   │       ├── lib.rs               # Wasm bindings exports
-│   │       ├── loan.rs              # Core Engine A (Amortisasi Anuitas)
+│   │       ├── lib.rs               # Wasm bindings & modules root
+│   │       ├── loan/                # Core Engine A (Modular Loan Engine)
+│   │       │   ├── mod.rs           # Facade & Wasm exports
+│   │       │   ├── types.rs         # AmortizationRow & Loan results
+│   │       │   ├── annuity.rs       # Bunga Anuitas standar bank
+│   │       │   ├── flat.rs          # Bunga Flat konstan
+│   │       │   ├── effective.rs     # Bunga Efektif menurun
+│   │       │   └── general.rs       # Simulasi KPR umum & rasio DSR
 │   │       ├── tvm.rs               # Core Engine B (Compound Interest & Solvers)
 │   │       ├── statutory.rs         # Core Engine C (PPh 21 TER, BPJS)
 │   │       └── buffer.rs            # 360-Mo Shared Ring-Buffer

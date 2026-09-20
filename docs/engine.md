@@ -71,6 +71,16 @@ $$A = P \times \frac{i(1 + i)^n}{(1 + i)^n - 1}$$
 - Menerima injeksi pembayaran ekstra $\Delta P_k$ di bulan ke-$k$.
 - Pilihan mode: **Perpendek Tenor** (cicilan bulanan tetap, $n$ berkurang) atau **Perkecil Cicilan** (tenor tetap, $A$ dihitung ulang dengan pokok yang lebih kecil).
 
+#### 4. Arsitektur Modular Sub-Modul (`packages/engine-wasm/src/loan/`)
+Untuk mencegah *technical debt* dan file *god object* monolitik, Core Engine A dipecah menjadi sub-modul independen:
+- `mod.rs`: Facade publik, serialisasi JSON, dan jembatan Wasm (`wasm_bindgen`).
+- `types.rs`: Definisi struktur data (`AmortizationRow`, `LoanCalculationResult`, `GeneralLoanCalculationResult`).
+- `annuity.rs`: Logika murni formula anuitas fixed-point standar KPR perbankan.
+- `flat.rs`: Logika murni bunga flat konstan untuk pembanding transparansi.
+- `effective.rs`: Logika murni bunga efektif menurun (*sliding rate*).
+- `general.rs`: Orchestrator KPR komprehensif (kalkulasi uang muka DP, biaya provisi 1%, biaya admin, biaya notaris 2%, dan rasio batas aman DSR 30%).
+- *(Ekstensi Siap Pasang)*: `syariah.rs` (Murabahah margin tetap), `subsidized.rs` (KPR FLPP 5% BTN), dan `refinance.rs` (Take-over).
+
 ---
 
 ### Core Engine B: Nilai Waktu Uang & Akumulasi Aset (TVM Engine)
