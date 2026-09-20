@@ -89,3 +89,21 @@ export interface LoanCalculationResult {
   total_payment: string;
   schedule: AmortizationRow[];
 }
+
+export interface GeneralLoanCalculationResult {
+  property_price: string;
+  down_payment: string;
+  principal: string;
+  calculation_type: string;
+  first_month_installment: string;
+  last_month_installment: string;
+  total_interest_paid: string;
+  total_payment: string;
+  provision_fee: string;
+  estimated_admin_fee: string;
+  estimated_legal_notary_fee: string;
+  total_upfront_cost: string;
+  recommended_minimum_income: string;
+  schedule: AmortizationRow[];
+}
+

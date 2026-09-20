@@ -1,6 +1,10 @@
 import { kprBankBcaSchema, ExtendedCalculatorSchema } from './kpr-bank-bca';
+import { kprSimulasiUmumSchema } from './kpr-simulasi-umum';
+
+export { type ExtendedCalculatorSchema };
 
 export const allCalculatorSchemas: ExtendedCalculatorSchema[] = [
+  kprSimulasiUmumSchema,
   kprBankBcaSchema,
 ];
 

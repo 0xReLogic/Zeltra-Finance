@@ -21,6 +21,24 @@ pub struct LoanCalculationResult {
     pub schedule: Vec<AmortizationRow>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct GeneralLoanCalculationResult {
+    pub property_price: String,
+    pub down_payment: String,
+    pub principal: String,
+    pub calculation_type: String,
+    pub first_month_installment: String,
+    pub last_month_installment: String,
+    pub total_interest_paid: String,
+    pub total_payment: String,
+    pub provision_fee: String,
+    pub estimated_admin_fee: String,
+    pub estimated_legal_notary_fee: String,
+    pub total_upfront_cost: String,
+    pub recommended_minimum_income: String,
+    pub schedule: Vec<AmortizationRow>,
+}
+
 /// Menghitung cicilan pinjaman anuitas dengan presisi fixed-point.
 /// Formula: A = P * [i * (1 + i)^n] / [(1 + i)^n - 1]
 pub fn calculate_annuity_internal(
@@ -116,6 +134,223 @@ pub fn calculate_annuity_internal(
     })
 }
 
+/// Menghitung pinjaman dengan bunga Flat (Flat Rate).
+/// Porsi bunga dan pokok per bulan konstan.
+pub fn calculate_flat_internal(
+    principal: Decimal,
+    annual_rate_percent: Decimal,
+    tenor_months: u32,
+) -> Result<LoanCalculationResult, String> {
+    if principal <= dec!(0) {
+        return Err("Pokok pinjaman harus lebih besar dari 0".to_string());
+    }
+    if tenor_months == 0 {
+        return Err("Tenor pinjaman minimal 1 bulan".to_string());
+    }
+
+    let monthly_rate = (annual_rate_percent / dec!(100)) / dec!(12);
+    let monthly_interest = (principal * monthly_rate).round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+    let monthly_principal = (principal / Decimal::from(tenor_months)).round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+    let monthly_installment = monthly_principal + monthly_interest;
+
+    let mut remaining = principal;
+    let mut total_interest = dec!(0);
+    let mut schedule = Vec::with_capacity(tenor_months as usize);
+
+    for m in 1..=tenor_months {
+        let principal_part = if m == tenor_months {
+            remaining
+        } else {
+            monthly_principal
+        };
+
+        remaining -= principal_part;
+        if remaining < dec!(0) {
+            remaining = dec!(0);
+        }
+        total_interest += monthly_interest;
+
+        let actual_installment = principal_part + monthly_interest;
+
+        schedule.push(AmortizationRow {
+            month: m,
+            principal_payment: principal_part.to_string(),
+            interest_payment: monthly_interest.to_string(),
+            total_installment: actual_installment.to_string(),
+            remaining_balance: remaining.to_string(),
+        });
+    }
+
+    let total_payment = principal + total_interest;
+
+    Ok(LoanCalculationResult {
+        monthly_installment: monthly_installment.to_string(),
+        total_interest_paid: total_interest.to_string(),
+        total_payment: total_payment.to_string(),
+        schedule,
+    })
+}
+
+/// Menghitung pinjaman dengan bunga Efektif (Sliding Rate).
+/// Pokok per bulan konstan, beban bunga menurun setiap bulan.
+pub fn calculate_effective_internal(
+    principal: Decimal,
+    annual_rate_percent: Decimal,
+    tenor_months: u32,
+) -> Result<(LoanCalculationResult, Decimal, Decimal), String> {
+    if principal <= dec!(0) {
+        return Err("Pokok pinjaman harus lebih besar dari 0".to_string());
+    }
+    if tenor_months == 0 {
+        return Err("Tenor pinjaman minimal 1 bulan".to_string());
+    }
+
+    let monthly_rate = (annual_rate_percent / dec!(100)) / dec!(12);
+    let monthly_principal = (principal / Decimal::from(tenor_months)).round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+
+    let mut remaining = principal;
+    let mut total_interest = dec!(0);
+    let mut first_installment = dec!(0);
+    let mut last_installment = dec!(0);
+    let mut schedule = Vec::with_capacity(tenor_months as usize);
+
+    for m in 1..=tenor_months {
+        let interest_part = if monthly_rate > dec!(0) {
+            (remaining * monthly_rate).round_dp_with_strategy(
+                0,
+                rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+            )
+        } else {
+            dec!(0)
+        };
+
+        let principal_part = if m == tenor_months {
+            remaining
+        } else {
+            monthly_principal
+        };
+
+        remaining -= principal_part;
+        if remaining < dec!(0) {
+            remaining = dec!(0);
+        }
+        total_interest += interest_part;
+
+        let actual_installment = principal_part + interest_part;
+        if m == 1 {
+            first_installment = actual_installment;
+        }
+        if m == tenor_months {
+            last_installment = actual_installment;
+        }
+
+        schedule.push(AmortizationRow {
+            month: m,
+            principal_payment: principal_part.to_string(),
+            interest_payment: interest_part.to_string(),
+            total_installment: actual_installment.to_string(),
+            remaining_balance: remaining.to_string(),
+        });
+    }
+
+    let total_payment = principal + total_interest;
+
+    Ok((
+        LoanCalculationResult {
+            monthly_installment: first_installment.to_string(),
+            total_interest_paid: total_interest.to_string(),
+            total_payment: total_payment.to_string(),
+            schedule,
+        },
+        first_installment,
+        last_installment,
+    ))
+}
+
+/// Menghitung simulasi KPR umum komprehensif (Nilai Properti, DP, Biaya Akad, DSR 30%).
+pub fn calculate_kpr_general_internal(
+    property_price: Decimal,
+    down_payment: Decimal,
+    annual_rate_percent: Decimal,
+    tenor_months: u32,
+    calc_type: &str,
+) -> Result<GeneralLoanCalculationResult, String> {
+    if property_price <= dec!(0) {
+        return Err("Harga properti harus lebih besar dari 0".to_string());
+    }
+    if down_payment >= property_price {
+        return Err("Uang muka tidak boleh melebihi atau sama dengan harga properti".to_string());
+    }
+
+    let principal = property_price - down_payment;
+
+    let (first_installment, last_installment, total_interest, total_payment, schedule) = match calc_type {
+        "flat" => {
+            let res = calculate_flat_internal(principal, annual_rate_percent, tenor_months)?;
+            let inst = Decimal::from_str_exact(&res.monthly_installment).unwrap_or(dec!(0));
+            (inst, inst, Decimal::from_str_exact(&res.total_interest_paid).unwrap_or(dec!(0)), Decimal::from_str_exact(&res.total_payment).unwrap_or(dec!(0)), res.schedule)
+        }
+        "effective" => {
+            let (res, first, last) = calculate_effective_internal(principal, annual_rate_percent, tenor_months)?;
+            (first, last, Decimal::from_str_exact(&res.total_interest_paid).unwrap_or(dec!(0)), Decimal::from_str_exact(&res.total_payment).unwrap_or(dec!(0)), res.schedule)
+        }
+        _ => {
+            // Default "annuity"
+            let res = calculate_annuity_internal(principal, annual_rate_percent, tenor_months)?;
+            let inst = Decimal::from_str_exact(&res.monthly_installment).unwrap_or(dec!(0));
+            (inst, inst, Decimal::from_str_exact(&res.total_interest_paid).unwrap_or(dec!(0)), Decimal::from_str_exact(&res.total_payment).unwrap_or(dec!(0)), res.schedule)
+        }
+    };
+
+    // Estimasi biaya akad kredit awal standar perbankan 2026:
+    // 1. Provisi: 1.00% dari plafon pinjaman
+    let provision_fee = (principal * dec!(0.01)).round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+    // 2. Administrasi: Estimasi flat Rp 1.000.000
+    let estimated_admin_fee = dec!(1000000);
+    // 3. Biaya Notaris, APHT, AJB, SKMHT: Estimasi ~2.00% dari plafon pinjaman
+    let estimated_legal_notary_fee = (principal * dec!(0.02)).round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+
+    let total_upfront_cost = down_payment + provision_fee + estimated_admin_fee + estimated_legal_notary_fee;
+
+    // Rekomendasi Gaji Minimum (Standar BI/OJK batas maksimal Debt Service Ratio DSR 30%)
+    let recommended_minimum_income = (first_installment / dec!(0.30)).round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+
+    Ok(GeneralLoanCalculationResult {
+        property_price: property_price.to_string(),
+        down_payment: down_payment.to_string(),
+        principal: principal.to_string(),
+        calculation_type: calc_type.to_string(),
+        first_month_installment: first_installment.to_string(),
+        last_month_installment: last_installment.to_string(),
+        total_interest_paid: total_interest.to_string(),
+        total_payment: total_payment.to_string(),
+        provision_fee: provision_fee.to_string(),
+        estimated_admin_fee: estimated_admin_fee.to_string(),
+        estimated_legal_notary_fee: estimated_legal_notary_fee.to_string(),
+        total_upfront_cost: total_upfront_cost.to_string(),
+        recommended_minimum_income: recommended_minimum_income.to_string(),
+        schedule,
+    })
+}
+
 #[wasm_bindgen]
 pub fn calculate_kpr_annuity(
     principal_str: &str,
@@ -129,6 +364,33 @@ pub fn calculate_kpr_annuity(
 
     let result = calculate_annuity_internal(principal, annual_rate, tenor_months)
         .map_err(|e| JsValue::from_str(&e))?;
+
+    serde_wasm_bindgen_or_json(&result)
+}
+
+#[wasm_bindgen]
+pub fn calculate_kpr_general(
+    property_price_str: &str,
+    dp_amount_str: &str,
+    annual_rate_str: &str,
+    tenor_months: u32,
+    calc_type: &str,
+) -> Result<JsValue, JsValue> {
+    let property_price = Decimal::from_str_exact(property_price_str)
+        .map_err(|e| JsValue::from_str(&format!("Harga properti tidak valid: {}", e)))?;
+    let dp_amount = Decimal::from_str_exact(dp_amount_str)
+        .map_err(|e| JsValue::from_str(&format!("Uang muka tidak valid: {}", e)))?;
+    let annual_rate = Decimal::from_str_exact(annual_rate_str)
+        .map_err(|e| JsValue::from_str(&format!("Suku bunga tidak valid: {}", e)))?;
+
+    let result = calculate_kpr_general_internal(
+        property_price,
+        dp_amount,
+        annual_rate,
+        tenor_months,
+        calc_type,
+    )
+    .map_err(|e| JsValue::from_str(&e))?;
 
     serde_wasm_bindgen_or_json(&result)
 }
@@ -163,8 +425,67 @@ mod tests {
     }
 
     #[test]
+    fn test_golden_case_kpr_general_annuity() {
+        // Harga Properti Rp 625jt, DP 20% (Rp 125jt) -> Plafon Rp 500jt, Bunga 7.00%, Tenor 15 Tahun
+        let property = dec!(625000000);
+        let dp = dec!(125000000);
+        let rate = dec!(7.00);
+        let tenor = 180;
+
+        let res = calculate_kpr_general_internal(property, dp, rate, tenor, "annuity").unwrap();
+
+        assert_eq!(res.principal, "500000000");
+        assert_eq!(res.first_month_installment, "4494141");
+        assert_eq!(res.last_month_installment, "4494141");
+        assert_eq!(res.total_interest_paid, "308945508");
+        assert_eq!(res.total_payment, "808945508");
+        assert_eq!(res.provision_fee, "5000000"); // 1% dari 500jt
+        assert_eq!(res.estimated_admin_fee, "1000000");
+        assert_eq!(res.estimated_legal_notary_fee, "10000000"); // 2% dari 500jt
+        assert_eq!(res.total_upfront_cost, "141000000"); // 125jt + 5jt + 1jt + 10jt
+        assert_eq!(res.recommended_minimum_income, "14980470"); // 4.494.141 / 0.3
+    }
+
+    #[test]
+    fn test_golden_case_kpr_general_flat() {
+        // Plafon Rp 120.000.000, Bunga 12%, Tenor 12 bulan
+        // Flat: Pokok = 10jt/bln, Bunga = 1.2jt/bln -> Angsuran = 11.2jt/bln, Total Bunga = 14.4jt
+        let property = dec!(150000000);
+        let dp = dec!(30000000);
+        let rate = dec!(12.00);
+        let tenor = 12;
+
+        let res = calculate_kpr_general_internal(property, dp, rate, tenor, "flat").unwrap();
+
+        assert_eq!(res.principal, "120000000");
+        assert_eq!(res.first_month_installment, "11200000");
+        assert_eq!(res.last_month_installment, "11200000");
+        assert_eq!(res.total_interest_paid, "14400000");
+        assert_eq!(res.total_payment, "134400000");
+        assert_eq!(res.schedule.last().unwrap().remaining_balance, "0");
+    }
+
+    #[test]
+    fn test_golden_case_kpr_general_effective() {
+        // Plafon Rp 120.000.000, Bunga 12%, Tenor 12 bulan
+        // Efektif: Bulan 1 = 11.2jt, Bulan 12 = 10.1jt, Total Bunga = 7.8jt
+        let property = dec!(150000000);
+        let dp = dec!(30000000);
+        let rate = dec!(12.00);
+        let tenor = 12;
+
+        let res = calculate_kpr_general_internal(property, dp, rate, tenor, "effective").unwrap();
+
+        assert_eq!(res.principal, "120000000");
+        assert_eq!(res.first_month_installment, "11200000");
+        assert_eq!(res.last_month_installment, "10100000");
+        assert_eq!(res.total_interest_paid, "7800000");
+        assert_eq!(res.total_payment, "127800000");
+        assert_eq!(res.schedule.last().unwrap().remaining_balance, "0");
+    }
+
+    #[test]
     fn test_zero_interest() {
-        // Pinjaman tanpa bunga (misal pinjaman keluarga): Rp 12.000.000, tenor 12 bulan = Rp 1.000.000/bln
         let principal = dec!(12000000);
         let annual_rate = dec!(0);
         let tenor = 12;

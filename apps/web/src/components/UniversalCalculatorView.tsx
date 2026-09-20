@@ -1,26 +1,40 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useTransition } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ExtendedCalculatorSchema } from '../schemas/kpr-bank-bca';
-import { AmortizationRow, LoanCalculationResult } from '@zeltra/shared-contracts';
+import { AmortizationRow, LoanCalculationResult, GeneralLoanCalculationResult } from '@zeltra/shared-contracts';
 
 interface Props {
   schema: ExtendedCalculatorSchema;
 }
 
-export function UniversalCalculatorView({ schema }: Props) {
-  const [wasmEngine, setWasmEngine] = useState<{
-    calculate_kpr_annuity: (p: string, r: string, t: number) => string;
-    get_engine_version: () => string;
-  } | null>(null);
+interface WasmEngineApi {
+  calculate_kpr_annuity: (p: string, r: string, t: number) => string;
+  calculate_kpr_general: (p: string, dp: string, r: string, t: number, m: string) => string;
+  get_engine_version: () => string;
+}
 
-  // Form State
-  const [principal, setPrincipal] = useState<number>(500000000);
+export function UniversalCalculatorView({ schema }: Props) {
+  const [wasmEngine, setWasmEngine] = useState<WasmEngineApi | null>(null);
+
+  const isGeneralKpr = schema.engineFunction === 'calculate_kpr_general';
+
+  // State for General KPR
+  const [propertyPrice, setPropertyPrice] = useState<number>(625000000);
+  const [dpPercent, setDpPercent] = useState<number>(20);
+  const [calculationType, setCalculationType] = useState<string>('annuity');
+
+  // State for Direct Loan
+  const [principalDirect, setPrincipalDirect] = useState<number>(500000000);
+
+  // Common State
   const [annualRate, setAnnualRate] = useState<number>(7.0);
   const [tenorYears, setTenorYears] = useState<number>(15);
 
-  // Calculation Result
-  const [result, setResult] = useState<LoanCalculationResult | null>(null);
+  // Results
+  const [annuityResult, setAnnuityResult] = useState<LoanCalculationResult | null>(null);
+  const [generalResult, setGeneralResult] = useState<GeneralLoanCalculationResult | null>(null);
+
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [showSchedule, setShowSchedule] = useState<boolean>(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -30,11 +44,17 @@ export function UniversalCalculatorView({ schema }: Props) {
     let isMounted = true;
     async function loadEngine() {
       try {
-        const wasmModule = await import('engine-wasm');
+        const wasmModule = (await import('engine-wasm')) as unknown as {
+          default: () => Promise<unknown>;
+          calculate_kpr_annuity: (p: string, r: string, t: number) => string;
+          calculate_kpr_general: (p: string, dp: string, r: string, t: number, m: string) => string;
+          get_engine_version: () => string;
+        };
         await wasmModule.default();
         if (isMounted) {
           setWasmEngine({
             calculate_kpr_annuity: wasmModule.calculate_kpr_annuity,
+            calculate_kpr_general: wasmModule.calculate_kpr_general,
             get_engine_version: wasmModule.get_engine_version,
           });
         }
@@ -48,28 +68,50 @@ export function UniversalCalculatorView({ schema }: Props) {
     };
   }, []);
 
-  // Compute Calculation
+  // Compute Calculation via Rust Wasm
   useEffect(() => {
     if (!wasmEngine) return;
 
     try {
       const tenorMonths = tenorYears * 12;
-      const rawJson = wasmEngine.calculate_kpr_annuity(
-        principal.toString(),
-        annualRate.toFixed(2),
-        tenorMonths
-      );
-      const parsed: LoanCalculationResult = JSON.parse(rawJson);
-      setResult(parsed);
+
+      if (isGeneralKpr) {
+        const dpAmount = Math.round((propertyPrice * dpPercent) / 100);
+        const rawJson = wasmEngine.calculate_kpr_general(
+          propertyPrice.toString(),
+          dpAmount.toString(),
+          annualRate.toFixed(2),
+          tenorMonths,
+          calculationType
+        );
+        const parsed: GeneralLoanCalculationResult = JSON.parse(rawJson);
+        setGeneralResult(parsed);
+      } else {
+        const rawJson = wasmEngine.calculate_kpr_annuity(
+          principalDirect.toString(),
+          annualRate.toFixed(2),
+          tenorMonths
+        );
+        const parsed: LoanCalculationResult = JSON.parse(rawJson);
+        setAnnuityResult(parsed);
+      }
     } catch (err) {
       console.error('Calculation error:', err);
     }
-  }, [wasmEngine, principal, annualRate, tenorYears]);
+  }, [wasmEngine, isGeneralKpr, propertyPrice, dpPercent, calculationType, principalDirect, annualRate, tenorYears]);
+
+  const activeSchedule: AmortizationRow[] = isGeneralKpr
+    ? generalResult?.schedule || []
+    : annuityResult?.schedule || [];
+
+  const effectivePrincipal: number = isGeneralKpr
+    ? propertyPrice - Math.round((propertyPrice * dpPercent) / 100)
+    : principalDirect;
 
   // Render Amortization Canvas Chart (60 FPS Direct Native Canvas)
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !result || !result.schedule || result.schedule.length === 0) return;
+    if (!canvas || activeSchedule.length === 0) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -82,15 +124,14 @@ export function UniversalCalculatorView({ schema }: Props) {
     canvas.height = height * dpr;
     ctx.scale(dpr, dpr);
 
-    // Clear background
     ctx.clearRect(0, 0, width, height);
 
     const padding = { top: 20, right: 20, bottom: 30, left: 60 };
     const chartW = width - padding.left - padding.right;
     const chartH = height - padding.top - padding.bottom;
 
-    const maxPrincipal = principal;
-    const totalMonths = result.schedule.length;
+    const maxPrincipal = effectivePrincipal;
+    const totalMonths = activeSchedule.length;
 
     // Grid lines
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
@@ -117,7 +158,7 @@ export function UniversalCalculatorView({ schema }: Props) {
     ctx.beginPath();
     ctx.moveTo(padding.left, height - padding.bottom);
 
-    result.schedule.forEach((row: AmortizationRow) => {
+    activeSchedule.forEach((row: AmortizationRow) => {
       const x = padding.left + ((row.month - 1) / totalMonths) * chartW;
       const balance = parseFloat(row.remaining_balance);
       const y = padding.top + (1 - balance / maxPrincipal) * chartH;
@@ -131,7 +172,7 @@ export function UniversalCalculatorView({ schema }: Props) {
 
     // Curve line
     ctx.beginPath();
-    result.schedule.forEach((row: AmortizationRow, idx: number) => {
+    activeSchedule.forEach((row: AmortizationRow, idx: number) => {
       const x = padding.left + ((row.month - 1) / totalMonths) * chartW;
       const balance = parseFloat(row.remaining_balance);
       const y = padding.top + (1 - balance / maxPrincipal) * chartH;
@@ -150,11 +191,11 @@ export function UniversalCalculatorView({ schema }: Props) {
     ctx.fillStyle = '#64748B';
     ctx.textAlign = 'center';
     ctx.font = '11px Inter, sans-serif';
-    for (let yr = 0; yr <= tenorYears; yr += Math.ceil(tenorYears / 5)) {
+    for (let yr = 0; yr <= tenorYears; yr += Math.max(1, Math.ceil(tenorYears / 5))) {
       const x = padding.left + (yr / tenorYears) * chartW;
       ctx.fillText(`Thn ${yr}`, x, height - 10);
     }
-  }, [result, principal, tenorYears]);
+  }, [activeSchedule, effectivePrincipal, tenorYears]);
 
   function formatRupiah(numStr: string | number): string {
     const n = typeof numStr === 'string' ? parseInt(numStr, 10) : numStr;
@@ -176,6 +217,8 @@ export function UniversalCalculatorView({ schema }: Props) {
     }
   }
 
+  const currentDpAmount = Math.round((propertyPrice * dpPercent) / 100);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
       {/* 2-Column Responsive Calculation Grid */}
@@ -194,44 +237,138 @@ export function UniversalCalculatorView({ schema }: Props) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-            {/* Input 1: Plafon Pinjaman */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                  Plafon Pinjaman Pokok
-                </label>
-                <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--emerald-mint)' }}>
-                  {formatRupiah(principal)}
-                </span>
-              </div>
-              <input
-                type="range"
-                className="zeltra-slider"
-                min={50000000}
-                max={5000000000}
-                step={25000000}
-                value={principal}
-                onChange={(e) => setPrincipal(Number(e.target.value))}
-              />
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
-                {[250000000, 500000000, 750000000, 1000000000, 1500000000].map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    className={`zeltra-chip ${principal === preset ? 'active' : ''}`}
-                    onClick={() => setPrincipal(preset)}
-                  >
-                    {formatShortRupiah(preset)}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {isGeneralKpr ? (
+              <>
+                {/* General Input 1: Harga Properti */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Harga Rumah / Properti
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--emerald-mint)' }}>
+                      {formatRupiah(propertyPrice)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={100000000}
+                    max={5000000000}
+                    step={25000000}
+                    value={propertyPrice}
+                    onChange={(e) => setPropertyPrice(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[350000000, 500000000, 625000000, 850000000, 1200000000].map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        className={`zeltra-chip ${propertyPrice === p ? 'active' : ''}`}
+                        onClick={() => setPropertyPrice(p)}
+                      >
+                        {formatShortRupiah(p)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            {/* Input 2: Suku Bunga Anuitas */}
+                {/* General Input 2: Uang Muka DP */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Uang Muka (DP {dpPercent}%)
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--cyan-electric)' }}>
+                      {formatRupiah(currentDpAmount)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={0}
+                    max={50}
+                    step={5}
+                    value={dpPercent}
+                    onChange={(e) => setDpPercent(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[0, 10, 15, 20, 30].map((dp) => (
+                      <button
+                        key={dp}
+                        type="button"
+                        className={`zeltra-chip ${dpPercent === dp ? 'active' : ''}`}
+                        onClick={() => setDpPercent(dp)}
+                      >
+                        DP {dp}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* General Input 3: Metode Bunga */}
+                <div>
+                  <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
+                    Metode Perhitungan Suku Bunga
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {[
+                      { id: 'annuity', label: 'Anuitas (Tetap)' },
+                      { id: 'effective', label: 'Efektif (Menurun)' },
+                      { id: 'flat', label: 'Flat (Pembanding)' },
+                    ].map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        className={`zeltra-chip ${calculationType === m.id ? 'active' : ''}`}
+                        onClick={() => setCalculationType(m.id)}
+                        style={{ padding: '6px 14px', fontSize: '13px' }}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Direct Loan Plafon */
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    Plafon Pinjaman Pokok
+                  </label>
+                  <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--emerald-mint)' }}>
+                    {formatRupiah(principalDirect)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  className="zeltra-slider"
+                  min={50000000}
+                  max={5000000000}
+                  step={25000000}
+                  value={principalDirect}
+                  onChange={(e) => setPrincipalDirect(Number(e.target.value))}
+                />
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                  {[250000000, 500000000, 750000000, 1000000000, 1500000000].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      className={`zeltra-chip ${principalDirect === preset ? 'active' : ''}`}
+                      onClick={() => setPrincipalDirect(preset)}
+                    >
+                      {formatShortRupiah(preset)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Suku Bunga Pinjaman */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                  Suku Bunga Efektif (% / Tahun)
+                  Suku Bunga (% / Tahun)
                 </label>
                 <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--cyan-electric)' }}>
                   {annualRate.toFixed(2)} %
@@ -260,7 +397,7 @@ export function UniversalCalculatorView({ schema }: Props) {
               </div>
             </div>
 
-            {/* Input 3: Tenor Pinjaman */}
+            {/* Tenor Pinjaman */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -300,9 +437,9 @@ export function UniversalCalculatorView({ schema }: Props) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <span style={{ fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-                Estimasi Angsuran Bulanan
+                {isGeneralKpr && calculationType === 'effective' ? 'Angsuran Bulan Pertama' : 'Estimasi Angsuran Bulanan'}
               </span>
-              <span className="zeltra-badge zeltra-badge-mint">Anuitas Fixed-Point</span>
+              <span className="zeltra-badge zeltra-badge-mint">Fixed-Point Math</span>
             </div>
 
             <div style={{ marginBottom: '24px' }}>
@@ -316,13 +453,22 @@ export function UniversalCalculatorView({ schema }: Props) {
                   letterSpacing: '-0.02em',
                 }}
               >
-                {result ? formatRupiah(result.monthly_installment) : 'Memuat Engine...'}
+                {isGeneralKpr
+                  ? generalResult
+                    ? formatRupiah(generalResult.first_month_installment)
+                    : 'Memuat Engine...'
+                  : annuityResult
+                  ? formatRupiah(annuityResult.monthly_installment)
+                  : 'Memuat Engine...'}
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                Perhitungan anuitas presisi dengan pembulatan Half-Up Rounding standar perbankan.
+                {isGeneralKpr && calculationType === 'effective'
+                  ? `Angsuran menurun hingga ${generalResult ? formatRupiah(generalResult.last_month_installment) : '-'} pada bulan terakhir.`
+                  : 'Perhitungan presisi fixed-point tanpa galat pembulatan JavaScript.'}
               </p>
             </div>
 
+            {/* Detailed Financial Breakdown */}
             <div
               style={{
                 display: 'grid',
@@ -334,20 +480,46 @@ export function UniversalCalculatorView({ schema }: Props) {
             >
               <div>
                 <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
-                  Total Akumulasi Bunga
+                  Plafon Pinjaman Pokok
                 </span>
-                <span className="tabular-nums" style={{ fontSize: '17px', fontWeight: 700, color: 'var(--crimson-coral)' }}>
-                  {result ? formatRupiah(result.total_interest_paid) : '-'}
+                <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  {formatRupiah(effectivePrincipal)}
                 </span>
               </div>
               <div>
                 <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
-                  Total Pengembalian
+                  Total Akumulasi Bunga
                 </span>
-                <span className="tabular-nums" style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {result ? formatRupiah(result.total_payment) : '-'}
+                <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--crimson-coral)' }}>
+                  {isGeneralKpr
+                    ? generalResult
+                      ? formatRupiah(generalResult.total_interest_paid)
+                      : '-'
+                    : annuityResult
+                    ? formatRupiah(annuityResult.total_interest_paid)
+                    : '-'}
                 </span>
               </div>
+              {isGeneralKpr && generalResult && (
+                <>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Estimasi Biaya Akad Awal
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--cyan-electric)' }}>
+                      {formatRupiah(generalResult.total_upfront_cost)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Syarat Gaji Bersih (DSR 30%)
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--emerald-mint)' }}>
+                      {formatRupiah(generalResult.recommended_minimum_income)}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -378,7 +550,7 @@ export function UniversalCalculatorView({ schema }: Props) {
           <div>
             <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Kurva Pelunasan Pokok Pinjaman (Amortisasi)</h3>
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
-              Penurunan saldo utang pokok selama {tenorYears} tahun masa tenor kredit.
+              Penurunan sisa saldo utang pokok selama {tenorYears} tahun masa tenor kredit.
             </p>
           </div>
           <span className="zeltra-badge zeltra-badge-mint">Direct 60 FPS Canvas</span>
@@ -392,7 +564,7 @@ export function UniversalCalculatorView({ schema }: Props) {
       </div>
 
       {/* Expandable Amortization Schedule Table */}
-      {showSchedule && result && result.schedule && (
+      {showSchedule && activeSchedule.length > 0 && (
         <div className="zeltra-card" style={{ padding: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <div>
@@ -416,7 +588,7 @@ export function UniversalCalculatorView({ schema }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {result.schedule.slice(0, 12).map((row: AmortizationRow) => (
+                {activeSchedule.slice(0, 12).map((row: AmortizationRow) => (
                   <tr key={row.month}>
                     <td className="tabular-nums" style={{ fontWeight: 600 }}>Ke-{row.month}</td>
                     <td className="tabular-nums" style={{ color: 'var(--emerald-mint)' }}>
