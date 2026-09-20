@@ -8,8 +8,8 @@ Dokumen ini memuat daftar 150 kalkulator finansial yang dikelompokkan ke dalam 1
 
 ## Status Progres Eksekusi
 - **Total Kalkulator**: 150
-- **Telah Selesai**: 9 / 150 (6.00%)
-- **Dalam Pengerjaan**: 1 (Kalkulator Biaya Balik Nama BBN)
+- **Telah Selesai**: 10 / 150 (6.67%)
+- **Dalam Pengerjaan**: 1 (Kalkulator Pajak Pembeli BPHTB)
 
 ---
 
@@ -25,10 +25,10 @@ Dokumen ini memuat daftar 150 kalkulator finansial yang dikelompokkan ke dalam 1
 - [x] 7. **Kalkulator KPR CIMB Niaga**: Simulasi KPR Xtra bunga promo 2026. *(Selesai: [/properti/kpr-cimb-niaga/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/kpr-cimb-niaga.ts))*
 - [x] 8. **Kalkulator KPR Syariah (Murabahah)**: Menggunakan prinsip margin keuntungan tetap jual beli, bebas bunga mengambang. *(Selesai: [/properti/kpr-syariah-murabahah/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/kpr-syariah-murabahah.ts))*
 - [x] 9. **Kalkulator KPR Syariah (MMQ)**: Simulasi skema kepemilikan bertahap Musyarakah Mutanaqisah. *(Selesai: [/properti/kpr-syariah-mmq/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/kpr-syariah-mmq.ts))*
-
-- [ ] 10. **Kalkulator Biaya Balik Nama (BBN)**: Estimasi biaya legalitas sertifikat properti.
+- [x] 10. **Kalkulator Biaya Balik Nama (BBN)**: Estimasi biaya legalitas sertifikat tanah/rumah BPN & PPAT. *(Selesai: [/properti/biaya-balik-nama-sertifikat/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/biaya-balik-nama-sertifikat.ts))*
 
 - [ ] 11. **Kalkulator Pajak Pembeli (BPHTB)**: Hitung otomatis tarif 5% setelah dikurangi NPOPTKP daerah.
+
 - [ ] 12. **Kalkulator Pajak Penjual (PPh Properti)**: Hitung potongan 2.5% dari nilai pengalihan hak tanah/bangunan.
 - [ ] 13. **Kalkulator Biaya Notaris KPR**: Estimasi biaya APHT, AJB, dan SKMHT.
 - [ ] 14. **Kalkulator Kemampuan Beli Rumah**: Input gaji bulanan, sistem memberi tahu harga maksimal rumah yang bisa dicicil.

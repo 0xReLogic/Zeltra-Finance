@@ -107,3 +107,15 @@ export interface GeneralLoanCalculationResult {
   schedule: AmortizationRow[];
 }
 
+export interface PropertyTitleTransferResult {
+  property_value: string;
+  bpn_pnbp_fee: string;
+  bpn_check_fee: string;
+  total_bpn_cost: string;
+  ppat_fee: string;
+  ppat_rate_percent: string;
+  admin_validation_fee: string;
+  total_title_transfer_cost: string;
+}
+
+

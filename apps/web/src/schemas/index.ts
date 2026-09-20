@@ -7,6 +7,7 @@ import { kprBankBniSchema } from './kpr-bank-bni';
 import { kprCimbNiagaSchema } from './kpr-cimb-niaga';
 import { kprSyariahMurabahahSchema } from './kpr-syariah-murabahah';
 import { kprSyariahMmqSchema } from './kpr-syariah-mmq';
+import { biayaBalikNamaSertifikatSchema } from './biaya-balik-nama-sertifikat';
 
 export { type ExtendedCalculatorSchema };
 
@@ -20,7 +21,9 @@ export const allCalculatorSchemas: ExtendedCalculatorSchema[] = [
   kprCimbNiagaSchema,
   kprSyariahMurabahahSchema,
   kprSyariahMmqSchema,
+  biayaBalikNamaSertifikatSchema,
 ];
+
 
 
 

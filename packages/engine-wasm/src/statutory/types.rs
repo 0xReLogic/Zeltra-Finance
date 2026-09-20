@@ -11,3 +11,16 @@ pub struct Pph21CalculationResult {
     pub bpjs_ketenagakerjaan: String,
     pub take_home_pay: String,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct PropertyTitleTransferResult {
+    pub property_value: String,
+    pub bpn_pnbp_fee: String,
+    pub bpn_check_fee: String,
+    pub total_bpn_cost: String,
+    pub ppat_fee: String,
+    pub ppat_rate_percent: String,
+    pub admin_validation_fee: String,
+    pub total_title_transfer_cost: String,
+}
+
