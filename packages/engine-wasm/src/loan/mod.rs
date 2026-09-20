@@ -188,7 +188,24 @@ mod tests {
         assert_eq!(res.total_interest_paid, "209690376");
         assert_eq!(res.schedule.last().unwrap().remaining_balance, "0");
     }
+
+    #[test]
+    fn test_golden_case_kpr_griya_bni() {
+        let property = dec!(600000000);
+        let dp = dec!(60000000); // 10% DP
+        let rate = dec!(4.75); // 4.75% promo 5 thn
+        let tenor = 240; // 20 years
+
+        let res = calculate_kpr_general_internal(property, dp, rate, tenor, "annuity").unwrap();
+
+        assert_eq!(res.principal, "540000000");
+        assert_eq!(res.first_month_installment, "3489608");
+        assert_eq!(res.last_month_installment, "3489608");
+        assert_eq!(res.schedule.last().unwrap().remaining_balance, "0");
+    }
 }
+
+
 
 
 
