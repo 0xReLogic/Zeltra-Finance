@@ -1,0 +1,273 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg-obsidian: #0B0F17;
+  --bg-obsidian-deep: #06090E;
+  --surface-card: #131B2A;
+  --surface-card-hover: #172235;
+  --surface-elevated: #1C273C;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(16, 185, 129, 0.4);
+  
+  --emerald-mint: #10B981;
+  --emerald-mint-glow: rgba(16, 185, 129, 0.2);
+  --emerald-mint-dark: #059669;
+  
+  --crimson-coral: #F43F5E;
+  --crimson-coral-glow: rgba(244, 63, 94, 0.2);
+  
+  --cyan-electric: #06B6D4;
+  --cyan-electric-glow: rgba(6, 182, 212, 0.2);
+  
+  --amber-warning: #F59E0B;
+  
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --text-dark: #0F172A;
+  
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Outfit', 'Inter', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  background-color: var(--bg-obsidian);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Glassmorphism Card Containers */
+.zeltra-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  backdrop-filter: blur(16px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.zeltra-card:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.zeltra-card-glow-mint {
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 30px -10px var(--emerald-mint-glow);
+}
+
+.zeltra-card-glow-coral {
+  border-color: rgba(244, 63, 94, 0.3);
+  box-shadow: 0 0 30px -10px var(--crimson-coral-glow);
+}
+
+/* Custom Input Fields */
+.zeltra-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.zeltra-input {
+  width: 100%;
+  background: rgba(11, 15, 23, 0.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  color: var(--text-primary);
+  padding: 12px 14px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.zeltra-input:focus {
+  border-color: var(--emerald-mint);
+  box-shadow: 0 0 0 3px var(--emerald-mint-glow);
+}
+
+/* Range Slider Styling */
+.zeltra-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  outline: none;
+  margin: 12px 0;
+  transition: background 0.2s;
+}
+
+.zeltra-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--emerald-mint);
+  cursor: pointer;
+  box-shadow: 0 0 10px var(--emerald-mint-glow);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.zeltra-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  background: #34D399;
+}
+
+.zeltra-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--emerald-mint);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 10px var(--emerald-mint-glow);
+}
+
+/* Preset Chips */
+.zeltra-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.zeltra-chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.zeltra-chip.active {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--emerald-mint);
+  border-color: var(--emerald-mint);
+}
+
+/* Badge */
+.zeltra-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.zeltra-badge-mint {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--emerald-mint);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.zeltra-badge-coral {
+  background: rgba(244, 63, 94, 0.12);
+  color: var(--crimson-coral);
+  border: 1px solid rgba(244, 63, 94, 0.25);
+}
+
+/* Action Button */
+.zeltra-button-primary {
+  background: var(--emerald-mint);
+  color: var(--bg-obsidian);
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 20px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.zeltra-button-primary:hover {
+  background: var(--emerald-mint-dark);
+  box-shadow: 0 4px 20px -2px var(--emerald-mint-glow);
+}
+
+.zeltra-button-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  font-weight: 500;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.zeltra-button-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Table styling for simulation matrix */
+.zeltra-table-container {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+}
+
+.zeltra-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+
+.zeltra-table th {
+  background: rgba(255, 255, 255, 0.03);
+  padding: 14px 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.zeltra-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+}
+
+.zeltra-table tr:last-child td {
+  border-bottom: none;
+}
+
+.zeltra-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}

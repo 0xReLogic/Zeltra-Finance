@@ -1,0 +1,13 @@
+{
+  "name": "zeltra-finance",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@12.3.4",
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter \"@zeltra/*\" build && pnpm --filter web build",
+    "build:wasm": "cd packages/engine-wasm && wasm-pack build --target web",
+    "test": "cargo test --manifest-path packages/engine-wasm/Cargo.toml",
+    "lint": "pnpm --filter web lint"
+  }
+}

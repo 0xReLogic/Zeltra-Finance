@@ -2,6 +2,10 @@
 node_modules/
 dist/
 target/
+.next/
+out/
+packages/engine-wasm/pkg/
+next-env.d.ts
 
 # Environment & Credentials
 .env
