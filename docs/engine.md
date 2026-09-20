@@ -102,6 +102,13 @@ Bila pengguna menentukan target akhir $FV^*$ (misal target pensiun Rp 5 Miliar):
   $$PMT = \frac{FV^* - PV \left(1 + \frac{r}{m}\right)^{mt}}{\left[ \frac{\left(1 + \frac{r}{m}\right)^{mt} - 1}{\frac{r}{m}} \right]}$$
 - Untuk mencari tingkat return $r$ yang dibutuhkan bila $PMT$ terbatas, engine mengeksekusi metode numerik **Bisection** dengan toleransi $\epsilon = 10^{-6}$ (selesai dalam < 25 iterasi di CPU).
 
+#### 4. Arsitektur Modular Sub-Modul (`packages/engine-wasm/src/tvm/`)
+- `mod.rs`: Facade publik & ekspor WebAssembly.
+- `types.rs`: Struct `CompoundGrowthPoint`, `CompoundInterestResult`.
+- `compound.rs`: Future Value berkala dan bunga majemuk fixed-point.
+- `fire.rs`: Aturan 4% penarikan aman dan simulasi pensiun dini.
+- `solver.rs`: Goal-seeking inverse solver via metode bisection.
+
 ---
 
 ### Core Engine C: Kepatuhan Regulasi RI & Komersial (Statutory Engine)
@@ -129,6 +136,14 @@ Melayani: **Kategori 3 (Gaji, HRD & Pajak Pribadi), Kategori 4 (UMKM), Kategori 
 - Input: HPP ($C$), target laba bersih yang diinginkan ($m$), persentase potongan admin marketplace ($a$).
 - Rumus rekomendasi harga jual agar margin tidak tergerus biaya platform:
   $$P_{\text{sell}} = \frac{C \times (1 + m)}{1 - a}$$
+
+#### 4. Arsitektur Modular Sub-Modul (`packages/engine-wasm/src/statutory/`)
+- `mod.rs`: Facade publik & ekspor WebAssembly.
+- `types.rs`: Struct `Pph21CalculationResult`, `BpjsBreakdown`, dsb.
+- `pph21_ter.rs`: Logika pemotongan PPh 21 tarif efektif rata-rata (PP 58/2023 Kategori A, B, C).
+- `bpjs.rs`: Formula BPJS Ketenagakerjaan (JHT, JP, JKK, JKM) & BPJS Kesehatan 4%:1%.
+- `umkm.rs`: Pajak final 0.5% PP 55/2022 & kalkulasi fee marketplace online.
+- `zakat.rs`: Zakat profesi, zakat maal, dan zakat fitrah sesuai standar BAZNAS.
 
 ---
 

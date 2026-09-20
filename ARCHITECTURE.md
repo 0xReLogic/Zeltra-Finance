@@ -107,17 +107,23 @@ zeltra-finance/
 │   ├── engine-wasm/                 # Rust Wasm Crate (Math Core)
 │   │   ├── Cargo.toml               # wasm-bindgen, rust_decimal, serde
 │   │   └── src/
-│   │       ├── lib.rs               # Wasm bindings & modules root
-│   │       ├── loan/                # Core Engine A (Modular Loan Engine)
+│   │       ├── lib.rs               # Wasm bindings & Triad root
+│   │       ├── loan/                # Core Engine A: Pinjaman & Kredit (Tools 1-35, 136-145)
 │   │       │   ├── mod.rs           # Facade & Wasm exports
 │   │       │   ├── types.rs         # AmortizationRow & Loan results
 │   │       │   ├── annuity.rs       # Bunga Anuitas standar bank
 │   │       │   ├── flat.rs          # Bunga Flat konstan
 │   │       │   ├── effective.rs     # Bunga Efektif menurun
 │   │       │   └── general.rs       # Simulasi KPR umum & rasio DSR
-│   │       ├── tvm.rs               # Core Engine B (Compound Interest & Solvers)
-│   │       ├── statutory.rs         # Core Engine C (PPh 21 TER, BPJS)
-│   │       └── buffer.rs            # 360-Mo Shared Ring-Buffer
+│   │       ├── tvm/                 # Core Engine B: Nilai Waktu Uang & Aset (Tools 76-125)
+│   │       │   ├── mod.rs           # Facade & Wasm exports
+│   │       │   ├── types.rs         # CompoundGrowthPoint & Result
+│   │       │   └── compound.rs      # Bunga majemuk & Future Value
+│   │       ├── statutory/           # Core Engine C: Regulasi RI & Pajak (Tools 36-75, 146-150)
+│   │       │   ├── mod.rs           # Facade & Wasm exports
+│   │       │   ├── types.rs         # PPh 21 TER, BPJS & Payroll
+│   │       │   └── pph21_ter.rs     # PP 58/2023 TER Kategori A/B/C
+│   │       └── buffer.rs            # 360-Mo Shared Linear Ring-Buffer
 ├── docs/                            # Dokumentasi Spesifikasi Resmi
 │   ├── produk.md                    # 150 Kalkulator Finansial
 │   ├── engine.md                    # Spesifikasi Rust Wasm
