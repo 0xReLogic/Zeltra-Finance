@@ -203,7 +203,24 @@ mod tests {
         assert_eq!(res.last_month_installment, "3489608");
         assert_eq!(res.schedule.last().unwrap().remaining_balance, "0");
     }
+
+    #[test]
+    fn test_golden_case_kpr_cimb_niaga_xtra() {
+        let property = dec!(800000000);
+        let dp = dec!(120000000); // 15% DP
+        let rate = dec!(4.50); // 4.50% promo 3 thn
+        let tenor = 240; // 20 years
+
+        let res = calculate_kpr_general_internal(property, dp, rate, tenor, "annuity").unwrap();
+
+        assert_eq!(res.principal, "680000000");
+        assert_eq!(res.first_month_installment, "4302016");
+        assert_eq!(res.last_month_installment, "4302016");
+        assert_eq!(res.schedule.last().unwrap().remaining_balance, "0");
+    }
 }
+
+
 
 
 
