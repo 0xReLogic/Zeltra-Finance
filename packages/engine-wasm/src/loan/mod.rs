@@ -156,14 +156,22 @@ mod tests {
     }
 
     #[test]
-    fn test_zero_interest() {
-        let principal = dec!(12000000);
-        let annual_rate = dec!(0);
-        let tenor = 12;
+    fn test_golden_case_btn_kpr_subsidi_flpp() {
+        let property = dec!(185000000);
+        let dp = dec!(1850000); // 1% DP
+        let rate = dec!(5.00); // 5% fixed FLPP
+        let tenor = 240; // 20 years
 
-        let result = calculate_annuity_internal(principal, annual_rate, tenor).unwrap();
-        assert_eq!(result.monthly_installment, "1000000");
-        assert_eq!(result.total_interest_paid, "0");
-        assert_eq!(result.schedule.last().unwrap().remaining_balance, "0");
+        let res = calculate_kpr_general_internal(property, dp, rate, tenor, "annuity").unwrap();
+
+        assert_eq!(res.principal, "183150000");
+        assert_eq!(res.first_month_installment, "1208709");
+        assert_eq!(res.last_month_installment, "1208709");
+        assert_eq!(res.total_interest_paid, "106940136");
+        assert_eq!(res.total_payment, "290090136");
+        assert_eq!(res.schedule.last().unwrap().remaining_balance, "0");
     }
 }
+
+
+

@@ -8,8 +8,8 @@ Dokumen ini memuat daftar 150 kalkulator finansial yang dikelompokkan ke dalam 1
 
 ## Status Progres Eksekusi
 - **Total Kalkulator**: 150
-- **Telah Selesai**: 3 / 150 (2.00%)
-- **Dalam Pengerjaan**: 1 (PPh 21 TER 2026)
+- **Telah Selesai**: 4 / 150 (2.67%)
+- **Dalam Pengerjaan**: 1 (Kalkulator KPR Bank BRI)
 
 ---
 
@@ -19,8 +19,9 @@ Dokumen ini memuat daftar 150 kalkulator finansial yang dikelompokkan ke dalam 1
 - [x] 1. **Kalkulator Simulasi KPR Umum**: Hitung cicilan rumah bulanan standar (Anuitas, Efektif, Flat). *(Selesai: [/properti/kpr-simulasi-umum/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/kpr-simulasi-umum.ts))*
 - [x] 2. **Kalkulator KPR Bank BCA**: Custom suku bunga fixed & floating mengikuti promo terbaru BCA. *(Selesai: [/properti/kpr-bank-bca/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/kpr-bank-bca.ts))*
 - [x] 3. **Kalkulator KPR Bank Mandiri**: Simulasi cicilan khusus produk Mandiri KPR (Super Promo 2026). *(Selesai: [/properti/kpr-bank-mandiri/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/kpr-bank-mandiri.ts))*
-- [ ] 4. **Kalkulator KPR Bank BTN**: Fokus pada cicilan rumah subsidi dan nonsubsidi BTN.
+- [x] 4. **Kalkulator KPR Bank BTN**: Fokus pada cicilan rumah subsidi FLPP 5% dan Platinum komersial. *(Selesai: [/properti/kpr-bank-btn/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/kpr-bank-btn.ts))*
 - [ ] 5. **Kalkulator KPR Bank BRI**: Simulasi pinjaman perumahan BRI.
+
 - [ ] 6. **Kalkulator KPR Bank BNI**: Perhitungan bunga Griya BNI.
 - [ ] 7. **Kalkulator KPR CIMB Niaga**: Simulasi KPR Xtra.
 - [ ] 8. **Kalkulator KPR Syariah (Murabahah)**: Menggunakan prinsip margin keuntungan tetap, bukan bunga mengambang.
