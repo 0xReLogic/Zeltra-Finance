@@ -41,4 +41,20 @@ pub struct PropertySellerTaxResult {
     pub net_proceeds: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct KprNotaryFeeResult {
+    pub property_value: String,
+    pub loan_principal: String,
+    pub ajb_fee: String,
+    pub ajb_rate_percent: String,
+    pub apht_fee: String,
+    pub apht_rate_percent: String,
+    pub bpn_ht_pnbp_fee: String,
+    pub credit_agreement_fee: String,
+    pub certificate_check_fee: String,
+    pub admin_validation_fee: String,
+    pub total_notary_fee: String,
+}
+
+
 

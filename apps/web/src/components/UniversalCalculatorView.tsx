@@ -9,6 +9,7 @@ import {
   PropertyTitleTransferResult,
   BphtbCalculationResult,
   PropertySellerTaxResult,
+  KprNotaryFeeResult,
 } from '@zeltra/shared-contracts';
 
 interface Props {
@@ -21,6 +22,7 @@ interface WasmEngineApi {
   calculate_property_title_transfer?: (v: string) => string;
   calculate_bphtb?: (p: string, n: string, r: string) => string;
   calculate_property_seller_tax?: (g: string, r: string) => string;
+  calculate_kpr_notary_fee?: (p: string, l: string) => string;
   get_engine_version: () => string;
 }
 
@@ -31,9 +33,10 @@ export function UniversalCalculatorView({ schema }: Props) {
   const isTitleTransfer = schema.engineFunction === 'calculate_property_title_transfer';
   const isBphtb = schema.engineFunction === 'calculate_bphtb';
   const isSellerTax = schema.engineFunction === 'calculate_property_seller_tax';
-  const isStatutory = isTitleTransfer || isBphtb || isSellerTax;
+  const isNotaryFee = schema.engineFunction === 'calculate_kpr_notary_fee';
+  const isStatutory = isTitleTransfer || isBphtb || isSellerTax || isNotaryFee;
 
-  // State for General KPR / Title Transfer / BPHTB / Seller Tax (Property Value / NPOP)
+  // State for General KPR / Title Transfer / BPHTB / Seller Tax / Notary (Property Value / NPOP)
   const [propertyPrice, setPropertyPrice] = useState<number>(750000000);
   const [dpPercent, setDpPercent] = useState<number>(20);
   const [calculationType, setCalculationType] = useState<string>('annuity');
@@ -58,6 +61,7 @@ export function UniversalCalculatorView({ schema }: Props) {
   const [titleTransferResult, setTitleTransferResult] = useState<PropertyTitleTransferResult | null>(null);
   const [bphtbResult, setBphtbResult] = useState<BphtbCalculationResult | null>(null);
   const [sellerTaxResult, setSellerTaxResult] = useState<PropertySellerTaxResult | null>(null);
+  const [notaryResult, setNotaryResult] = useState<KprNotaryFeeResult | null>(null);
 
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [showSchedule, setShowSchedule] = useState<boolean>(false);
@@ -75,6 +79,7 @@ export function UniversalCalculatorView({ schema }: Props) {
           calculate_property_title_transfer?: (v: string) => string;
           calculate_bphtb?: (p: string, n: string, r: string) => string;
           calculate_property_seller_tax?: (g: string, r: string) => string;
+          calculate_kpr_notary_fee?: (p: string, l: string) => string;
           get_engine_version: () => string;
         };
         await wasmModule.default();
@@ -85,6 +90,7 @@ export function UniversalCalculatorView({ schema }: Props) {
             calculate_property_title_transfer: wasmModule.calculate_property_title_transfer,
             calculate_bphtb: wasmModule.calculate_bphtb,
             calculate_property_seller_tax: wasmModule.calculate_property_seller_tax,
+            calculate_kpr_notary_fee: wasmModule.calculate_kpr_notary_fee,
             get_engine_version: wasmModule.get_engine_version,
           });
         }
@@ -103,7 +109,20 @@ export function UniversalCalculatorView({ schema }: Props) {
     if (!wasmEngine) return;
 
     try {
-      if (isSellerTax) {
+      if (isNotaryFee) {
+        if (wasmEngine.calculate_kpr_notary_fee) {
+          const principal = Math.min(
+            propertyPrice,
+            Math.round((propertyPrice * (100 - dpPercent)) / 100)
+          );
+          const rawJson = wasmEngine.calculate_kpr_notary_fee(
+            propertyPrice.toString(),
+            principal.toString()
+          );
+          const parsed: KprNotaryFeeResult = JSON.parse(rawJson);
+          setNotaryResult(parsed);
+        }
+      } else if (isSellerTax) {
         if (wasmEngine.calculate_property_seller_tax) {
           const rawJson = wasmEngine.calculate_property_seller_tax(
             propertyPrice.toString(),
@@ -155,6 +174,7 @@ export function UniversalCalculatorView({ schema }: Props) {
     }
   }, [
     wasmEngine,
+    isNotaryFee,
     isSellerTax,
     isBphtb,
     isTitleTransfer,
@@ -169,6 +189,7 @@ export function UniversalCalculatorView({ schema }: Props) {
     annualRate,
     tenorYears,
   ]);
+
 
 
 
@@ -306,7 +327,9 @@ export function UniversalCalculatorView({ schema }: Props) {
         <div className="zeltra-card" style={{ padding: '28px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 700 }}>
-              {isSellerTax
+              {isNotaryFee
+                ? 'Parameter Akad KPR'
+                : isSellerTax
                 ? 'Parameter Pajak Penjual (PPh Properti)'
                 : isBphtb
                 ? 'Parameter Pajak BPHTB'
@@ -318,7 +341,85 @@ export function UniversalCalculatorView({ schema }: Props) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
-            {isSellerTax ? (
+            {isNotaryFee ? (
+              /* KPR Notary Fee Inputs */
+              <>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Nilai Transaksi / Harga Rumah
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--emerald-mint)' }}>
+                      {formatRupiah(propertyPrice)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={100000000}
+                    max={5000000000}
+                    step={25000000}
+                    value={propertyPrice}
+                    onChange={(e) => setPropertyPrice(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[300000000, 500000000, 750000000, 1000000000, 1500000000].map((p) => (
+                      <button
+                        key={p}
+                        type="button"
+                        className={`zeltra-chip ${propertyPrice === p ? 'active' : ''}`}
+                        onClick={() => setPropertyPrice(p)}
+                      >
+                        {formatShortRupiah(p)}
+                      </button>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                    Dasar batas pengenaan tarif honorarium Akta Jual Beli (AJB) PPAT sesuai Permen ATR/BPN No. 33/2021.
+                  </p>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Uang Muka / Down Payment ({dpPercent}%)
+                    </label>
+                    <span className="tabular-nums" style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      {formatRupiah(currentDpAmount)}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    className="zeltra-slider"
+                    min={0}
+                    max={50}
+                    step={5}
+                    value={dpPercent}
+                    onChange={(e) => setDpPercent(Number(e.target.value))}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                    {[0, 10, 20, 30].map((dp) => (
+                      <button
+                        key={dp}
+                        type="button"
+                        className={`zeltra-chip ${dpPercent === dp ? 'active' : ''}`}
+                        onClick={() => setDpPercent(dp)}
+                      >
+                        {dp}%
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: '12px', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block' }}>
+                      Estimasi Plafon Pinjaman KPR (Dasar APHT & PK):
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '15px', fontWeight: 700, color: 'var(--cyan-electric)' }}>
+                      {formatRupiah(Math.min(propertyPrice, Math.round((propertyPrice * (100 - dpPercent)) / 100)))}
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : isSellerTax ? (
               /* Seller Tax (PPh Final) Inputs */
               <>
                 <div>
@@ -767,7 +868,9 @@ export function UniversalCalculatorView({ schema }: Props) {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <span style={{ fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>
-                {isSellerTax
+                {isNotaryFee
+                  ? 'Estimasi Total Biaya Notaris & PPAT KPR'
+                  : isSellerTax
                   ? 'Estimasi PPh Final Penjual Properti'
                   : isBphtb
                   ? 'Estimasi Pajak Pembeli BPHTB Terutang'
@@ -778,7 +881,9 @@ export function UniversalCalculatorView({ schema }: Props) {
                   : 'Estimasi Angsuran Bulanan'}
               </span>
               <span className="zeltra-badge zeltra-badge-mint">
-                {isSellerTax
+                {isNotaryFee
+                  ? 'Paket Akad KPR'
+                  : isSellerTax
                   ? 'PP 34/2016 e-PHTB'
                   : isBphtb
                   ? 'UU HKPD 1/2022'
@@ -799,7 +904,11 @@ export function UniversalCalculatorView({ schema }: Props) {
                   letterSpacing: '-0.02em',
                 }}
               >
-                {isSellerTax
+                {isNotaryFee
+                  ? notaryResult
+                    ? formatRupiah(notaryResult.total_notary_fee)
+                    : 'Memuat Engine...'
+                  : isSellerTax
                   ? sellerTaxResult
                     ? formatRupiah(sellerTaxResult.pph_final_amount)
                     : 'Memuat Engine...'
@@ -820,7 +929,9 @@ export function UniversalCalculatorView({ schema }: Props) {
                   : 'Memuat Engine...'}
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                {isSellerTax
+                {isNotaryFee
+                  ? 'Estimasi total paket biaya legalitas notaris dan PPAT rekanan perbankan saat penandatanganan akad kredit KPR.'
+                  : isSellerTax
                   ? 'Pajak penghasilan final yang wajib disetor dan divalidasi via e-PHTB sebelum penandatanganan Akta Jual Beli (AJB).'
                   : isBphtb
                   ? 'Pajak daerah resmi yang wajib disetor ke kas daerah sebelum penandatanganan Akta Jual Beli (AJB).'
@@ -842,7 +953,59 @@ export function UniversalCalculatorView({ schema }: Props) {
                 borderTop: '1px solid var(--border-subtle)',
               }}
             >
-              {isSellerTax && sellerTaxResult ? (
+              {isNotaryFee && notaryResult ? (
+                <>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Akta Jual Beli (AJB PPAT - {notaryResult.ajb_rate_percent})
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {formatRupiah(notaryResult.ajb_fee)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Akta Pemberian Hak Tanggungan (APHT)
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--cyan-electric)' }}>
+                      {formatRupiah(notaryResult.apht_fee)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      PNBP Hak Tanggungan BPN (PP 128/2015)
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {formatRupiah(notaryResult.bpn_ht_pnbp_fee)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Akta Perjanjian Kredit (PK Notaris)
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--emerald-mint)' }}>
+                      {formatRupiah(notaryResult.credit_agreement_fee)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Pengecekan Sertifikat BPN
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {formatRupiah(notaryResult.certificate_check_fee)}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                      Validasi & Administrasi Berkas
+                    </span>
+                    <span className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {formatRupiah(notaryResult.admin_validation_fee)}
+                    </span>
+                  </div>
+                </>
+              ) : isSellerTax && sellerTaxResult ? (
+
                 <>
                   <div>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>

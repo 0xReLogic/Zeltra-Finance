@@ -133,6 +133,21 @@ export interface PropertySellerTaxResult {
   net_proceeds: string;
 }
 
+export interface KprNotaryFeeResult {
+  property_value: string;
+  loan_principal: string;
+  ajb_fee: string;
+  ajb_rate_percent: string;
+  apht_fee: string;
+  apht_rate_percent: string;
+  bpn_ht_pnbp_fee: string;
+  credit_agreement_fee: string;
+  certificate_check_fee: string;
+  admin_validation_fee: string;
+  total_notary_fee: string;
+}
+
+
 
 
 

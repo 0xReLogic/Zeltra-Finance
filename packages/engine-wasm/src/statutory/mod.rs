@@ -2,16 +2,34 @@ pub mod property;
 pub mod types;
 
 pub use property::{
-    calculate_bphtb_internal, calculate_property_seller_tax_internal,
-    calculate_property_title_transfer_internal,
+    calculate_bphtb_internal, calculate_kpr_notary_fee_internal,
+    calculate_property_seller_tax_internal, calculate_property_title_transfer_internal,
 };
 pub use types::{
-    BphtbCalculationResult, Pph21CalculationResult, PropertySellerTaxResult,
-    PropertyTitleTransferResult,
+    BphtbCalculationResult, KprNotaryFeeResult, Pph21CalculationResult,
+    PropertySellerTaxResult, PropertyTitleTransferResult,
 };
 
 use rust_decimal::Decimal;
 use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+pub fn calculate_kpr_notary_fee(
+    property_value_str: &str,
+    loan_principal_str: &str,
+) -> Result<JsValue, JsValue> {
+    let property_value = Decimal::from_str_exact(property_value_str)
+        .map_err(|e| JsValue::from_str(&format!("Nilai properti tidak valid: {}", e)))?;
+    let loan_principal = Decimal::from_str_exact(loan_principal_str)
+        .map_err(|e| JsValue::from_str(&format!("Plafon pinjaman KPR tidak valid: {}", e)))?;
+
+    let result = calculate_kpr_notary_fee_internal(property_value, loan_principal)
+        .map_err(|e| JsValue::from_str(&e))?;
+
+    let json_str = serde_json::to_string(&result)
+        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?;
+    Ok(JsValue::from_str(&json_str))
+}
 
 #[wasm_bindgen]
 pub fn calculate_property_seller_tax(

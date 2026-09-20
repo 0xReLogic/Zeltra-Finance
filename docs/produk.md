@@ -8,8 +8,8 @@ Dokumen ini memuat daftar 150 kalkulator finansial yang dikelompokkan ke dalam 1
 
 ## Status Progres Eksekusi
 - **Total Kalkulator**: 150
-- **Telah Selesai**: 12 / 150 (8.00%)
-- **Berikutnya**: Calculator 13 (Kalkulator Biaya Notaris & PPAT Akad KPR - APHT, AJB, SKMHT)
+- **Telah Selesai**: 13 / 150 (8.67%)
+- **Berikutnya**: Calculator 14 (Kalkulator Kemampuan Beli Rumah - DSR 30% Debt-to-Income)
 
 ---
 
@@ -28,8 +28,8 @@ Dokumen ini memuat daftar 150 kalkulator finansial yang dikelompokkan ke dalam 1
 - [x] 10. **Kalkulator Biaya Balik Nama (BBN)**: Estimasi biaya legalitas sertifikat tanah/rumah BPN & PPAT. *(Selesai: [/properti/biaya-balik-nama-sertifikat/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/biaya-balik-nama-sertifikat.ts))*
 - [x] 11. **Kalkulator Pajak Pembeli (BPHTB)**: Hitung otomatis tarif 5% setelah dikurangi NPOPTKP daerah. *(Selesai: [/properti/pajak-bphtb/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/pajak-bphtb.ts))*
 - [x] 12. **Kalkulator Pajak Penjual (PPh Properti)**: Hitung potongan 2.5% dari nilai pengalihan hak tanah/bangunan. *(Selesai: [/properti/pajak-penjual-pph/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/pajak-penjual-pph.ts))*
+- [x] 13. **Kalkulator Biaya Notaris KPR**: Estimasi biaya APHT, AJB, dan SKMHT. *(Selesai: [/properti/biaya-notaris-kpr/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/biaya-notaris-kpr.ts))*
 
-- [ ] 13. **Kalkulator Biaya Notaris KPR**: Estimasi biaya APHT, AJB, dan SKMHT.
 - [ ] 14. **Kalkulator Kemampuan Beli Rumah**: Input gaji bulanan, sistem memberi tahu harga maksimal rumah yang bisa dicicil.
 
 - [ ] 15. **Kalkulator Sewa vs Beli Rumah**: Analisis finansial jangka panjang apakah lebih untung sewa atau langsung ambil KPR.

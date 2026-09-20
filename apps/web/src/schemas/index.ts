@@ -10,6 +10,7 @@ import { kprSyariahMmqSchema } from './kpr-syariah-mmq';
 import { biayaBalikNamaSertifikatSchema } from './biaya-balik-nama-sertifikat';
 import { pajakBphtbSchema } from './pajak-bphtb';
 import { pajakPenjualPphSchema } from './pajak-penjual-pph';
+import { biayaNotarisKprSchema } from './biaya-notaris-kpr';
 
 export { type ExtendedCalculatorSchema };
 
@@ -26,7 +27,9 @@ export const allCalculatorSchemas: ExtendedCalculatorSchema[] = [
   biayaBalikNamaSertifikatSchema,
   pajakBphtbSchema,
   pajakPenjualPphSchema,
+  biayaNotarisKprSchema,
 ];
+
 
 
 

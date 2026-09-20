@@ -1,8 +1,90 @@
 use super::types::{
-    BphtbCalculationResult, PropertySellerTaxResult, PropertyTitleTransferResult,
+    BphtbCalculationResult, KprNotaryFeeResult, PropertySellerTaxResult,
+    PropertyTitleTransferResult,
 };
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
+
+/// Menghitung Rincian Biaya Notaris & PPAT Akad Kredit KPR
+/// Berdasarkan Permen ATR/BPN No. 33/2021 (AJB), UUHT No. 4/1996 (APHT), dan PP No. 128/2015 (PNBP Hak Tanggungan).
+pub fn calculate_kpr_notary_fee_internal(
+    property_value: Decimal,
+    loan_principal: Decimal,
+) -> Result<KprNotaryFeeResult, String> {
+    if property_value <= dec!(0) {
+        return Err("Nilai properti/transaksi harus lebih besar dari 0".to_string());
+    }
+    if loan_principal <= dec!(0) {
+        return Err("Plafon pinjaman KPR harus lebih besar dari 0".to_string());
+    }
+    if loan_principal > property_value {
+        return Err("Plafon pinjaman KPR tidak boleh melebihi nilai transaksi properti".to_string());
+    }
+
+    // 1. Akta Jual Beli (AJB) PPAT (Permen ATR/BPN No. 33/2021)
+    let (ajb_rate, ajb_rate_str) = if property_value <= dec!(500000000) {
+        (dec!(0.0100), "1.00%")
+    } else if property_value <= dec!(1000000000) {
+        (dec!(0.0075), "0.75%")
+    } else if property_value <= dec!(2500000000) {
+        (dec!(0.0050), "0.50%")
+    } else {
+        (dec!(0.0025), "0.25%")
+    };
+    let ajb_fee = (property_value * ajb_rate).round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+
+    // 2. Akta Pemberian Hak Tanggungan (APHT) PPAT (0.50% dari plafon kredit)
+    let apht_rate = dec!(0.0050);
+    let apht_fee = (loan_principal * apht_rate).round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+
+    // 3. PNBP Hak Tanggungan BPN (Lampiran PP No. 128 Tahun 2015)
+    let bpn_ht_fee = if loan_principal <= dec!(250000000) {
+        dec!(50000)
+    } else if loan_principal <= dec!(1000000000) {
+        dec!(200000)
+    } else if loan_principal <= dec!(10000000000) {
+        dec!(2500000)
+    } else {
+        dec!(25000000)
+    };
+
+    // 4. Akta Perjanjian Kredit (PK) Notaris (0.25% dari plafon kredit, minimal Rp 500.000)
+    let mut pk_fee = (loan_principal * dec!(0.0025)).round_dp_with_strategy(
+        0,
+        rust_decimal::RoundingStrategy::MidpointAwayFromZero,
+    );
+    if pk_fee < dec!(500000) {
+        pk_fee = dec!(500000);
+    }
+
+    // 5. Pengecekan Sertifikat & Validasi BPN
+    let cert_check_fee = dec!(100000);
+
+    // 6. Administrasi & Validasi Berkas Notaris/PPAT
+    let admin_fee = dec!(500000);
+
+    let total_notary_fee = ajb_fee + apht_fee + bpn_ht_fee + pk_fee + cert_check_fee + admin_fee;
+
+    Ok(KprNotaryFeeResult {
+        property_value: property_value.to_string(),
+        loan_principal: loan_principal.to_string(),
+        ajb_fee: ajb_fee.to_string(),
+        ajb_rate_percent: ajb_rate_str.to_string(),
+        apht_fee: apht_fee.to_string(),
+        apht_rate_percent: "0.50%".to_string(),
+        bpn_ht_pnbp_fee: bpn_ht_fee.to_string(),
+        credit_agreement_fee: pk_fee.to_string(),
+        certificate_check_fee: cert_check_fee.to_string(),
+        admin_validation_fee: admin_fee.to_string(),
+        total_notary_fee: total_notary_fee.to_string(),
+    })
+}
 
 /// Menghitung Pajak Penjual Properti (PPh Final Pengalihan Hak atas Tanah dan/atau Bangunan)
 /// Berdasarkan Peraturan Pemerintah (PP) No. 34 Tahun 2016 jo. UU PPh Pasal 4 ayat (2).
@@ -206,6 +288,50 @@ mod tests {
         let res = calculate_property_seller_tax_internal(gross_value, rate).unwrap();
         assert_eq!(res.pph_final_amount, "0");
         assert_eq!(res.net_proceeds, "50000000");
+    }
+
+    #[test]
+    fn test_golden_case_kpr_notary_fee_regular_750m() {
+        let property_value = dec!(750000000);
+        let loan_principal = dec!(600000000);
+
+        let res = calculate_kpr_notary_fee_internal(property_value, loan_principal).unwrap();
+        assert_eq!(res.property_value, "750000000");
+        assert_eq!(res.loan_principal, "600000000");
+        assert_eq!(res.ajb_fee, "5625000"); // 0.75%
+        assert_eq!(res.ajb_rate_percent, "0.75%");
+        assert_eq!(res.apht_fee, "3000000"); // 0.50%
+        assert_eq!(res.bpn_ht_pnbp_fee, "200000"); // tier 250m-1b
+        assert_eq!(res.credit_agreement_fee, "1500000"); // 0.25%
+        assert_eq!(res.certificate_check_fee, "100000");
+        assert_eq!(res.admin_validation_fee, "500000");
+        assert_eq!(res.total_notary_fee, "10925000");
+    }
+
+    #[test]
+    fn test_golden_case_kpr_notary_fee_high_1500m() {
+        let property_value = dec!(1500000000);
+        let loan_principal = dec!(1200000000);
+
+        let res = calculate_kpr_notary_fee_internal(property_value, loan_principal).unwrap();
+        assert_eq!(res.ajb_fee, "7500000"); // 0.50%
+        assert_eq!(res.apht_fee, "6000000"); // 0.50%
+        assert_eq!(res.bpn_ht_pnbp_fee, "2500000"); // tier 1b-10b
+        assert_eq!(res.credit_agreement_fee, "3000000"); // 0.25%
+        assert_eq!(res.total_notary_fee, "19600000");
+    }
+
+    #[test]
+    fn test_golden_case_kpr_notary_fee_starter_300m() {
+        let property_value = dec!(300000000);
+        let loan_principal = dec!(240000000);
+
+        let res = calculate_kpr_notary_fee_internal(property_value, loan_principal).unwrap();
+        assert_eq!(res.ajb_fee, "3000000"); // 1.00%
+        assert_eq!(res.apht_fee, "1200000"); // 0.50%
+        assert_eq!(res.bpn_ht_pnbp_fee, "50000"); // tier <= 250m
+        assert_eq!(res.credit_agreement_fee, "600000"); // 0.25%
+        assert_eq!(res.total_notary_fee, "5450000");
     }
 
     #[test]
