@@ -235,7 +235,24 @@ mod tests {
         assert_eq!(res.total_payment, "850000000"); // Total harga jual bank (pokok + margin)
         assert_eq!(res.schedule.last().unwrap().remaining_balance, "0");
     }
+
+    #[test]
+    fn test_golden_case_kpr_syariah_mmq() {
+        let property = dec!(750000000);
+        let dp = dec!(150000000); // 20% porsi modal nasabah
+        let ujrah_rate = dec!(6.75); // 6.75% p.a. sewa ekuivalen
+        let tenor = 180; // 15 years
+
+        let res = calculate_kpr_general_internal(property, dp, ujrah_rate, tenor, "annuity").unwrap();
+
+        assert_eq!(res.principal, "600000000");
+        assert_eq!(res.first_month_installment, "5309457");
+        assert_eq!(res.last_month_installment, "5309457");
+        assert_eq!(res.schedule.last().unwrap().remaining_balance, "0");
+    }
 }
+
+
 
 
 
