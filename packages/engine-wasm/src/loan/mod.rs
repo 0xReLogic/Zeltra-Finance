@@ -85,6 +85,22 @@ mod tests {
     }
 
     #[test]
+    fn test_golden_case_kpr_bank_mandiri_promo_5yr() {
+        // Golden Case Mandiri: Pinjaman Rp 600.000.000, Promo Fixed 5 Tahun 5.50%, Tenor 20 Tahun (240 Bulan)
+        let principal = dec!(600000000);
+        let annual_rate = dec!(5.50);
+        let tenor = 240;
+
+        let result = calculate_annuity_internal(principal, annual_rate, tenor).unwrap();
+
+        assert_eq!(result.monthly_installment, "4127324");
+
+        let last_row = result.schedule.last().unwrap();
+        assert_eq!(last_row.month, 240);
+        assert_eq!(last_row.remaining_balance, "0");
+    }
+
+    #[test]
     fn test_golden_case_kpr_general_annuity() {
         let property = dec!(625000000);
         let dp = dec!(125000000);
