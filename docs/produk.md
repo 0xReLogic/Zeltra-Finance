@@ -8,8 +8,8 @@ Dokumen ini memuat daftar 150 kalkulator finansial yang dikelompokkan ke dalam 1
 
 ## Status Progres Eksekusi
 - **Total Kalkulator**: 150
-- **Telah Selesai**: 7 / 150 (4.67%)
-- **Dalam Pengerjaan**: 1 (Kalkulator KPR Syariah Murabahah)
+- **Telah Selesai**: 8 / 150 (5.33%)
+- **Dalam Pengerjaan**: 1 (Kalkulator KPR Syariah MMQ)
 
 ---
 
@@ -23,10 +23,9 @@ Dokumen ini memuat daftar 150 kalkulator finansial yang dikelompokkan ke dalam 1
 - [x] 5. **Kalkulator KPR Bank BRI**: Simulasi pinjaman Griya BRI bunga promo 2026. *(Selesai: [/properti/kpr-bank-bri/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/kpr-bank-bri.ts))*
 - [x] 6. **Kalkulator KPR Bank BNI**: Simulasi pinjaman BNI Griya bunga promo 2026. *(Selesai: [/properti/kpr-bank-bni/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/kpr-bank-bni.ts))*
 - [x] 7. **Kalkulator KPR CIMB Niaga**: Simulasi KPR Xtra bunga promo 2026. *(Selesai: [/properti/kpr-cimb-niaga/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/kpr-cimb-niaga.ts))*
-
-- [ ] 8. **Kalkulator KPR Syariah (Murabahah)**: Menggunakan prinsip margin keuntungan tetap, bukan bunga mengambang.
-
+- [x] 8. **Kalkulator KPR Syariah (Murabahah)**: Menggunakan prinsip margin keuntungan tetap jual beli, bebas bunga mengambang. *(Selesai: [/properti/kpr-syariah-murabahah/](file:///workspaces/Zeltra-Finance/apps/web/src/schemas/kpr-syariah-murabahah.ts))*
 - [ ] 9. **Kalkulator KPR Syariah (MMQ)**: Simulasi skema kepemilikan bertahap (Musyarakah Mutanaqisah).
+
 - [ ] 10. **Kalkulator Biaya Balik Nama (BBN)**: Estimasi biaya legalitas sertifikat properti.
 - [ ] 11. **Kalkulator Pajak Pembeli (BPHTB)**: Hitung otomatis tarif 5% setelah dikurangi NPOPTKP daerah.
 - [ ] 12. **Kalkulator Pajak Penjual (PPh Properti)**: Hitung potongan 2.5% dari nilai pengalihan hak tanah/bangunan.

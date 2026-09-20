@@ -5,6 +5,7 @@ import { kprBankBtnSchema } from './kpr-bank-btn';
 import { kprBankBriSchema } from './kpr-bank-bri';
 import { kprBankBniSchema } from './kpr-bank-bni';
 import { kprCimbNiagaSchema } from './kpr-cimb-niaga';
+import { kprSyariahMurabahahSchema } from './kpr-syariah-murabahah';
 
 export { type ExtendedCalculatorSchema };
 
@@ -16,7 +17,9 @@ export const allCalculatorSchemas: ExtendedCalculatorSchema[] = [
   kprBankBriSchema,
   kprBankBniSchema,
   kprCimbNiagaSchema,
+  kprSyariahMurabahahSchema,
 ];
+
 
 
 

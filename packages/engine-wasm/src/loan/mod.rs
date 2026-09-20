@@ -218,7 +218,25 @@ mod tests {
         assert_eq!(res.last_month_installment, "4302016");
         assert_eq!(res.schedule.last().unwrap().remaining_balance, "0");
     }
+
+    #[test]
+    fn test_golden_case_kpr_syariah_murabahah() {
+        let property = dec!(500000000);
+        let dp = dec!(100000000); // 20% DP
+        let margin_rate = dec!(7.50); // 7.5% p.a. flat margin
+        let tenor = 180; // 15 years
+
+        let res = calculate_kpr_general_internal(property, dp, margin_rate, tenor, "flat").unwrap();
+
+        assert_eq!(res.principal, "400000000");
+        assert_eq!(res.first_month_installment, "4722222");
+        assert_eq!(res.last_month_installment, "4722222");
+        assert_eq!(res.total_interest_paid, "450000000"); // Total margin keuntungan bank
+        assert_eq!(res.total_payment, "850000000"); // Total harga jual bank (pokok + margin)
+        assert_eq!(res.schedule.last().unwrap().remaining_balance, "0");
+    }
 }
+
 
 
 
