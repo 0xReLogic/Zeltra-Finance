@@ -124,7 +124,7 @@ export default function RootLayout({
                   transition: 'color 0.2s',
                 }}
               >
-                Pajak TER 2024
+                Pajak TER 2026
               </a>
               <span
                 style={{

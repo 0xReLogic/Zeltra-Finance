@@ -14,6 +14,9 @@ Dokumen ini adalah kontrak panduan operasional, pembatasan arsitektur, dan instr
     3. [`docs/uiux.md`](file:///workspaces/Zeltra-Finance/docs/uiux.md) (Spesifikasi Next.js SSG, Universal Renderer, dan Obsidian-Mint design tokens)
     4. [`docs/seo.md`](file:///workspaces/Zeltra-Finance/docs/seo.md) (Spesifikasi Programmatic SEO, JSON-LD schema ganda, dan GEO 2026)
     5. [`ARCHITECTURE.md`](file:///workspaces/Zeltra-Finance/ARCHITECTURE.md) (Master System Blueprint)
+- **Konteks Temporal Mutlak (Tahun 2026)**:
+  - Tahun operasional, acuan waktu sekarang, dan konteks regulasi adalah **2026** (bukan 2024 atau tahun lampau lainnya).
+  - Dilarang keras menuliskan "2024" sebagai acuan kondisi, regulasi, atau waktu saat ini di seluruh kode, rute URL, schema SEO, antarmuka pengguna, maupun percakapan. Seluruh referensi masa kini wajib menggunakan **2026**.
 
 ---
 
