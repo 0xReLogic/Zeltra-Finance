@@ -19,52 +19,58 @@ Zeltra Finance dibangun menggunakan **Next.js (App Router)** yang dikonfigurasi 
    - **Phase 2 (Browser Runtime)**: Halaman dihidrasi dengan komponen `'use client'`. WebAssembly (`engine-wasm`) dimuat secara dinamis, mengaktifkan slider interaktif, kalkulasi instan, dan visualizer Canvas 60 FPS tanpa jeda.
 
 3. **Routing Silo Semantik**:
-   - Struktur folder mengikuti Semantic Silo:
-     - `src/app/[silo]/[slug]/page.tsx`
-     - Rute statis otomatis mencetak: `/properti/kpr-bank-bca`, `/pajak/gaji-bersih`, `/umkm/potongan-admin-shopee`.
+   - Struktur folder mengikuti Semantic Silo di monorepo `apps/web`:
+     - `apps/web/src/app/[silo]/[slug]/page.tsx`
+     - Rute statis otomatis mencetak: `/properti/kpr-simulasi-umum/`, `/properti/kpr-bank-bca/`, `/pajak/pph-21-ter-2026/`.
 
 ---
 
 ## 2. Universal Declarative UI Renderer (Anti-Spaghetti Code)
 
-Untuk menghindari menulis 150 komponen form yang membosankan dan boros kode, sistem mengadopsi **Single Master Dynamic Renderer**:
+Untuk menghindari menulis 150 komponen form yang membosankan dan boros kode, sistem mengadopsi **Single Master Dynamic Renderer (`apps/web/src/components/UniversalCalculatorView.tsx`)**:
 
 ```
-[ Schema JSON Kalkulator ] ──► [ UniversalFormRenderer ] ──► [ Reactive Engine (Wasm) ]
-                                         │                                │
-                                         ▼                                ▼
-                              [ Adaptive Slider & Inputs ]    [ 60 FPS Canvas Visualizer ]
+[ Schema Metadata Kalkulator ] ──► [ UniversalCalculatorView ] ──► [ Rust Engine (Wasm) ]
+                                                │                                │
+                                                ▼                                ▼
+                                     [ Adaptive Sliders & Inputs ]    [ 60 FPS Canvas Visualizer ]
 ```
 
-### Format Schema JSON per Kalkulator (Contoh: KPR BCA)
+### Format Schema Kontrak Bersama (`@zeltra/shared-contracts`)
 ```typescript
+export interface InputFieldSchema {
+  id: string;
+  label: string;
+  description?: string;
+  type: 'currency' | 'percentage' | 'number' | 'select' | 'slider';
+  defaultValue: number | string;
+  validation: FieldValidation;
+  options?: Array<{ label: string; value: string | number }>;
+  unit?: string;
+}
+
+export interface OutputFieldSchema {
+  id: string;
+  label: string;
+  type: 'currency' | 'percentage' | 'number' | 'badge';
+  highlight?: boolean;
+}
+
 export interface CalculatorSchema {
-  slug: string;                      // "kpr-bca"
-  category: string;                  // "properti"
-  title: string;                     // "Kalkulator KPR Bank BCA"
-  description: string;               // Deskripsi SEO meta
-  fields: {
-    id: string;
-    label: string;
-    type: 'currency' | 'percent' | 'tenor_month' | 'select';
-    defaultValue: number;
-    min: number;
-    max: number;
-    step: number;
-    presets?: { label: string; value: number }[];
-  }[];
-  visualizer: 'amortization-curve' | 'donut-ratio' | 'waterfall' | 'fire-projection';
-  seoContent: {
-    howItWorks: string[];
-    formulaExplanation: string;
-    faq: { q: string; a: string }[];
-  };
+  id: string;
+  slug: string;
+  name: string;
+  category: CalculatorCategory;
+  engineFunction: string;
+  inputs: InputFieldSchema[];
+  outputs: OutputFieldSchema[];
+  seo: SeoSchema;
 }
 ```
 
 Dengan sistem ini:
-- Menambahkan 1 kalkulator baru **cukup membuat 1 objek file konfigurasi**.
-- Tampilan form, validasi, format Rupiah (`Rp 1.500.000`), slider, grafik, dan bagian FAQ di bawahnya otomatis terbentuk secara konsisten.
+- Menambahkan 1 kalkulator baru **cukup membuat 1 objek file konfigurasi di `apps/web/src/schemas/`**.
+- Tampilan form, validasi, format Rupiah (`Rp 1.500.000`), slider, visualizer grafik, dan bagian FAQ di bawahnya otomatis terbentuk secara konsisten.
 
 ---
 
