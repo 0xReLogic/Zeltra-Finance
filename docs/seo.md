@@ -22,9 +22,9 @@ Berdasarkan riset industri dan statistik SEO 2026 (BrightEdge, Similarweb, Spark
 Struktur URL dirancang menggunakan **Hierarchical Semantic Silo** yang membagi otoritas domain ke dalam 10 kluster utama tanpa tumpang tindih:
 
 ```
-https://zeltra.finance/
+https://zeltra.id/ (atau https://zeltra.finance/)
 ├── properti/                 (Silo 1: KPR & Rumah - Tools 1-20)
-│   ├── kpr-umum
+│   ├── kpr-simulasi-umum
 │   ├── kpr-bank-bca
 │   ├── kpr-bank-mandiri
 │   ├── bphtb
@@ -33,7 +33,7 @@ https://zeltra.finance/
 │   ├── kredit-mobil-baru
 │   └── pajak-tahunan-mobil
 ├── pajak/                    (Silo 3: Gaji & Regulasi - Tools 36-55)
-│   ├── pph-21-ter
+│   ├── pph-21-ter-2026
 │   └── gaji-bersih
 ├── umkm/                     (Silo 4: Marketplace & Dagang - Tools 56-75)
 │   ├── potongan-admin-shopee
@@ -73,9 +73,9 @@ Di bawah form kalkulator interaktif, sistem mencetak tabel statis HTML berisi sk
 
 | Plafon Pinjaman | Tenor 10 Tahun (Bunga 7%) | Tenor 15 Tahun (Bunga 7%) | Tenor 20 Tahun (Bunga 7%) |
 | :--- | :--- | :--- | :--- |
-| **Rp 250.000.000** | Rp 2.902.000 / bln | Rp 2.247.000 / bln | Rp 1.938.000 / bln |
-| **Rp 500.000.000** | Rp 5.805.000 / bln | Rp 4.494.000 / bln | Rp 3.876.000 / bln |
-| **Rp 1.000.000.000** | Rp 11.610.000 / bln | Rp 8.988.000 / bln | Rp 7.753.000 / bln |
+| **Rp 250.000.000** | Rp 2.902.712 / bln | Rp 2.247.071 / bln | Rp 1.938.247 / bln |
+| **Rp 500.000.000** | Rp 5.805.424 / bln | Rp 4.494.141 / bln | Rp 3.876.494 / bln |
+| **Rp 1.000.000.000** | Rp 11.610.848 / bln | Rp 8.988.283 / bln | Rp 7.752.987 / bln |
 
 *Dampak*: Tabel statis ini yang di-crawl oleh bot Google dan langsung diangkat menjadi **Google Featured Snippet (Posisi #0)**.
 
