@@ -2,6 +2,7 @@ import { kprBankBcaSchema, ExtendedCalculatorSchema } from './kpr-bank-bca';
 import { kprSimulasiUmumSchema } from './kpr-simulasi-umum';
 import { kprBankMandiriSchema } from './kpr-bank-mandiri';
 import { kprBankBtnSchema } from './kpr-bank-btn';
+import { kprBankBriSchema } from './kpr-bank-bri';
 
 export { type ExtendedCalculatorSchema };
 
@@ -10,7 +11,9 @@ export const allCalculatorSchemas: ExtendedCalculatorSchema[] = [
   kprBankBcaSchema,
   kprBankMandiriSchema,
   kprBankBtnSchema,
+  kprBankBriSchema,
 ];
+
 
 
 export function getCalculatorBySiloAndSlug(
