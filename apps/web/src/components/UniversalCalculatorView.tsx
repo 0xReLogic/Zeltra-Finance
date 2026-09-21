@@ -439,7 +439,7 @@ export function UniversalCalculatorView({ schema }: Props) {
                 ? 'Nilai Transaksi Properti'
                 : 'Parameter Pinjaman'}
             </h2>
-            <span className="zeltra-badge zeltra-badge-mint">Wasm Powered</span>
+            <span className="zeltra-badge zeltra-badge-mint">Sesuai Regulasi RI</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
@@ -1395,7 +1395,7 @@ export function UniversalCalculatorView({ schema }: Props) {
                   ? 'UU HKPD 1/2022'
                   : isTitleTransfer
                   ? 'PP 128/2015 BPN'
-                  : 'Fixed-Point Math'}
+                  : 'Terverifikasi'}
               </span>
             </div>
 
@@ -1419,34 +1419,34 @@ export function UniversalCalculatorView({ schema }: Props) {
                     ? rentVsBuyResult.recommendation === 'BELI_LEBIH_UNTUNG'
                       ? 'LEBIH UNTUNG BELI'
                       : 'LEBIH UNTUNG SEWA'
-                    : 'Memuat Engine...'
+                    : 'Menghitung...'
                   : isHomeAffordability
                   ? affordabilityResult
                     ? formatRupiah(affordabilityResult.max_property_price)
-                    : 'Memuat Engine...'
+                    : 'Menghitung...'
                   : isNotaryFee
                   ? notaryResult
                     ? formatRupiah(notaryResult.total_notary_fee)
-                    : 'Memuat Engine...'
+                    : 'Menghitung...'
                   : isSellerTax
                   ? sellerTaxResult
                     ? formatRupiah(sellerTaxResult.pph_final_amount)
-                    : 'Memuat Engine...'
+                    : 'Menghitung...'
                   : isBphtb
                   ? bphtbResult
                     ? formatRupiah(bphtbResult.bphtb_due)
-                    : 'Memuat Engine...'
+                    : 'Menghitung...'
                   : isTitleTransfer
                   ? titleTransferResult
                     ? formatRupiah(titleTransferResult.total_title_transfer_cost)
-                    : 'Memuat Engine...'
+                    : 'Menghitung...'
                   : isGeneralKpr
                   ? generalResult
                     ? formatRupiah(generalResult.first_month_installment)
-                    : 'Memuat Engine...'
+                    : 'Menghitung...'
                   : annuityResult
                   ? formatRupiah(annuityResult.monthly_installment)
-                  : 'Memuat Engine...'}
+                  : 'Menghitung...'}
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
                 {isRentVsBuy
@@ -1465,7 +1465,7 @@ export function UniversalCalculatorView({ schema }: Props) {
                   ? 'Estimasi resmi PNBP kantor BPN dan honorarium PPAT sesuai regulasi Menteri ATR/BPN.'
                   : isGeneralKpr && calculationType === 'effective'
                   ? `Angsuran menurun hingga ${generalResult ? formatRupiah(generalResult.last_month_installment) : '-'} pada bulan terakhir.`
-                  : 'Perhitungan presisi fixed-point tanpa galat pembulatan JavaScript.'}
+                  : 'Hasil akurat berdasarkan rumus standar perbankan nasional.'}
               </p>
             </div>
 
@@ -1789,7 +1789,7 @@ export function UniversalCalculatorView({ schema }: Props) {
                 Penurunan sisa saldo utang pokok selama {tenorYears} tahun masa tenor kredit.
               </p>
             </div>
-            <span className="zeltra-badge zeltra-badge-mint">Direct 60 FPS Canvas</span>
+            <span className="zeltra-badge zeltra-badge-mint">Grafik Interaktif</span>
           </div>
 
           <div style={{ width: '100%', height: '240px', position: 'relative' }}>
@@ -1813,7 +1813,7 @@ export function UniversalCalculatorView({ schema }: Props) {
                 Pembagian porsi angsuran pokok dan bunga pinjaman di awal masa cicilan.
               </p>
             </div>
-            <span className="zeltra-badge zeltra-badge-mint">Fixed-Point</span>
+            <span className="zeltra-badge zeltra-badge-mint">Akurasi Bank</span>
           </div>
 
           <div className="zeltra-table-container">

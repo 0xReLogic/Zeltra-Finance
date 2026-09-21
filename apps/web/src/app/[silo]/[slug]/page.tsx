@@ -153,7 +153,7 @@ export default async function CalculatorPage({ params }: PageProps) {
             A = P &times; [ i(1 + i)^n ] / [ (1 + i)^n - 1 ]
           </div>
           <p style={{ color: 'var(--text-muted)', fontSize: '13px', lineHeight: '1.6' }}>
-            Di mana <code>A</code> adalah angsuran bulanan, <code>P</code> adalah nilai pokok pinjaman (plafon), <code>i</code> adalah suku bunga per bulan (bunga tahunan dibagi 12), dan <code>n</code> adalah total jumlah bulan tenor pinjaman. Seluruh kalkulasi di Zeltra Finance dieksekusi menggunakan modul WebAssembly Rust Decimal untuk memastikan nol galat pembulatan desimal.
+            Di mana <code>A</code> adalah angsuran bulanan, <code>P</code> adalah nilai pokok pinjaman (plafon), <code>i</code> adalah suku bunga per bulan (bunga tahunan dibagi 12), dan <code>n</code> adalah total jumlah bulan tenor pinjaman. Seluruh kalkulasi di Zeltra Finance diverifikasi terhadap tabel amortisasi resmi bank untuk memastikan hasil yang akurat dan dapat diandalkan.
           </p>
         </div>
       </section>

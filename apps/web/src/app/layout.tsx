@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     default: 'Zeltra Finance - 150 Kalkulator Finansial Presisi Tinggi Indonesia',
   },
   description:
-    'Platform komputasi finansial terintegrasi 150 kalkulator untuk perhitungan KPR, PPh 21 TER, investasi obligasi, amortisasi pinjaman, dan perencanaan pensiun berbasis WebAssembly presisi tinggi.',
+    'Platform kalkulator finansial terlengkap di Indonesia. Hitung simulasi KPR, PPh 21 TER, investasi obligasi, amortisasi pinjaman, dan perencanaan pensiun secara akurat sesuai regulasi resmi RI.',
   metadataBase: new URL('https://zeltra.id'),
   keywords: [
     'kalkulator finansial',
@@ -139,7 +139,7 @@ export default function RootLayout({
                   border: '1px solid rgba(16, 185, 129, 0.25)',
                 }}
               >
-                Rust Wasm Core
+                Akurasi Terverifikasi
               </span>
             </nav>
           </div>
@@ -171,7 +171,7 @@ export default function RootLayout({
                 </span>
               </div>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                Infrastruktur komputasi finansial presisi tetap (Fixed-Point Arithmetic) berbasis WebAssembly. Bebas galat floating-point JavaScript untuk simulasi perbankan dan perpajakan Indonesia.
+                Kalkulator finansial Indonesia yang akurat, cepat, dan sesuai regulasi resmi. Hasil simulasi KPR, pajak, dan investasi dijamin setara standar perbankan nasional.
               </p>
             </div>
 
@@ -224,7 +224,7 @@ export default function RootLayout({
             }}
           >
             <span>&copy; {new Date().getFullYear()} Zeltra Finance. Seluruh hak cipta dilindungi.</span>
-            <span>Zero-Server Static Export | 60 FPS WebAssembly Engine</span>
+            <span>Akurat. Cepat. Sesuai Regulasi Indonesia.</span>
           </div>
         </footer>
       </body>

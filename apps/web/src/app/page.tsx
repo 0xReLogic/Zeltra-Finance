@@ -52,7 +52,7 @@ export default function HomePage() {
       <div style={{ textAlign: 'center', maxWidth: '820px', margin: '0 auto 56px' }}>
         <div style={{ display: 'inline-block', marginBottom: '16px' }}>
           <span className="zeltra-badge zeltra-badge-mint">
-            WebAssembly Fixed-Point Precision Engine
+            Akurasi Setara Standar Perbankan Nasional
           </span>
         </div>
 
@@ -76,7 +76,7 @@ export default function HomePage() {
             marginBottom: '36px',
           }}
         >
-          150 kalkulator finansial bebas galat desimal JavaScript. Ditenagai mesin Rust WebAssembly untuk perbankan, perpajakan resmi DJP, investasi obligasi, dan transaksi bisnis digital.
+          150 kalkulator finansial yang akurat, cepat, dan sesuai regulasi resmi Indonesia. Mulai dari simulasi KPR, perhitungan PPh 21, investasi obligasi, hingga keuangan bisnis UMKM.
         </p>
 
         {/* Omnibox / Spotlight Search Bar */}
@@ -152,31 +152,31 @@ export default function HomePage() {
       >
         <div className="zeltra-card" style={{ padding: '24px' }}>
           <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--emerald-mint)', marginBottom: '4px' }}>
-            0% Rounding Error
+            100% Akurat
           </div>
-          <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>Fixed-Point Arithmetic</h3>
+          <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>Akurasi Setara Standar Bank</h3>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-            Menggunakan rust_decimal murni tanpa floating-point JavaScript yang rawan presisi pada transaksi moneter.
+            Hasil perhitungan dijamin sama persis dengan simulasi bank. Tidak ada selisih sen akibat pembulatan yang salah.
           </p>
         </div>
 
         <div className="zeltra-card" style={{ padding: '24px' }}>
           <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--cyan-electric)', marginBottom: '4px' }}>
-            60 FPS Direct Canvas
+            Hasil Instan
           </div>
-          <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>Zero-Lag Visualizer</h3>
+          <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>Grafik Langsung Diperbarui</h3>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-            Kurva amortisasi 360 bulan digambar langsung melalui HTML5 Canvas tanpa re-render DOM yang memicu stuttering.
+            Geser slider, grafik cicilan 30 tahun langsung berubah tanpa loading. Eksplorasi skenario finansial secara real-time.
           </p>
         </div>
 
         <div className="zeltra-card" style={{ padding: '24px' }}>
           <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>
-            Static Site Export
+            Bisa Offline
           </div>
-          <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>Edge Global CDN</h3>
+          <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '6px' }}>Tanpa Internet pun Bisa</h3>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-            Seluruh 150 kalkulator di-generate secara statis. TTFB di bawah 40 milidetik dan dapat bekerja secara offline.
+            Semua kalkulator dapat digunakan tanpa koneksi internet. Data kamu tidak pernah dikirim ke server mana pun.
           </p>
         </div>
       </div>
@@ -219,7 +219,7 @@ export default function HomePage() {
                   <span style={{ fontSize: '12px', color: 'var(--emerald-mint)', fontWeight: 600 }}>
                     {p.count}
                   </span>
-                  <span className="zeltra-badge zeltra-badge-mint">Verified Math</span>
+                  <span className="zeltra-badge zeltra-badge-mint">Sesuai Regulasi RI</span>
                 </div>
                 <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
                   {p.name}

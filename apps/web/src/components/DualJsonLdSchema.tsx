@@ -15,7 +15,7 @@ export function DualJsonLdSchema({ schema, canonicalUrl }: DualJsonLdSchemaProps
     description: schema.seo.description,
     applicationCategory: 'FinanceApplication',
     operatingSystem: 'All',
-    browserRequirements: 'Requires WebAssembly support',
+    browserRequirements: 'Requires a modern web browser',
     offers: {
       '@type': 'Offer',
       price: '0',

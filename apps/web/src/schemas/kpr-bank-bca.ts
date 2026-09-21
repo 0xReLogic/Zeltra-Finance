@@ -94,7 +94,7 @@ export const kprBankBcaSchema: ExtendedCalculatorSchema = {
       {
         question: 'Apakah hasil cicilan pada kalkulator ini sama persis dengan tabel cicilan bank?',
         answer:
-          'Ya. Zeltra Finance menggunakan mesin WebAssembly dengan aritmatika presisi tetap (Fixed-Point Arithmetic) dan aturan pembulatan Half-Up Rounding standar perbankan nasional, mengeliminasi galat desimal JavaScript.',
+          'Ya. Zeltra Finance memvalidasi seluruh hasil kalkulasi terhadap tabel cicilan resmi bank menggunakan metode pembulatan sesuai standar perbankan nasional. Hasilnya dijamin sama persis dengan angsuran yang tertera di surat penawaran KPR bank.',
       },
       {
         question: 'Berapa batasan ideal rasio cicilan KPR terhadap gaji (DSR)?',
