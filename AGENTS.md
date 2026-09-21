@@ -51,6 +51,21 @@ Dokumen ini adalah kontrak panduan operasional, pembatasan arsitektur, dan instr
    - Tipografi angka: Wajib menggunakan `tabular-nums` agar angka tidak bergetar saat slider digerakkan.
 4. **Rendering 60 FPS (Zero-Copy Buffer)**:
    - Visualizer kurva amortisasi wajib membaca pointer memori linear Wasm secara langsung (`Float64Array view`) ke elemen `<canvas>`. Hindari konversi array JavaScript yang memicu lonjakan *Garbage Collection (GC)*.
+5. **Larangan Keras Jargon Teknis di Copy UI (No Technical Jargon in User-Facing Copy)**:
+   - Dilarang keras menampilkan istilah rekayasa perangkat lunak internal kepada pengguna akhir di dalam elemen UI mana pun: label, badge, teks tombol, placeholder, tooltip, pesan loading, deskripsi kartu, meta description, maupun FAQ.
+   - Daftar kata/frasa yang dilarang muncul di UI:
+     - `WebAssembly`, `Wasm`, `Rust`, `rust_decimal`, `Fixed-Point`, `Fixed-Point Arithmetic`
+     - `floating-point`, `galat desimal`, `rounding error`
+     - `60 FPS`, `Canvas`, `HTML5 Canvas`, `DOM`, `re-render`, `GC`, `Garbage Collection`
+     - `Static Export`, `SSG`, `CDN`, `Edge`, `TTFB`, `Zero-Server`
+     - `JavaScript Number`, `TypeScript`, `Next.js`, `Node.js`
+     - `Memuat Engine...`, `Wasm Powered`, `Direct Canvas`, `Ring-Buffer`, `DAG`
+   - Ganti dengan bahasa manfaat yang dipahami pengguna awam:
+     - Teknis: `WebAssembly engine` -> User-facing: `akurasi setara standar bank`
+     - Teknis: `Fixed-Point Arithmetic` -> User-facing: `tidak ada selisih sen`
+     - Teknis: `60 FPS Canvas` -> User-facing: `grafik langsung diperbarui`
+     - Teknis: `Static Export / Zero-Server` -> User-facing: `bisa digunakan tanpa internet`
+     - Teknis: `Memuat Engine...` -> User-facing: `Menghitung...`
 
 ---
 
